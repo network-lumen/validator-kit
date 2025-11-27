@@ -43,19 +43,18 @@ step "Checking PQC key"
 if ! $BIN keys pqc-show "$PQC_NAME" >/dev/null 2>&1; then
     error "PQC key '$PQC_NAME' not found"
 fi
-info "PQC key exists: $PQC_NAME"
 
 PUB_HEX=$($BIN keys pqc-show "$PQC_NAME" | grep "PubKey (hex)" | sed 's/.*: *//')
 [ -n "$PUB_HEX" ] || error "Unable to extract PQC pubkey"
 info "PQC pubkey OK"
 
 # ------------------------- PQC LINK-ACCOUNT ON-CHAIN -------------------------
-step "Checking PQC on-chain link"
+step "Checking on-chain PQC link"
 
 if $BIN q pqc account "$FROM_ADDR" --node "$RPC" >/dev/null 2>&1; then
     info "PQC already linked on-chain"
 else
-    info "PQC NOT linked ? sending pqc link-account tx"
+    info "Linking PQC on-chain..."
 
     LINK_RES=$($BIN tx pqc link-account \
       --from "$FROM" \
@@ -65,21 +64,17 @@ else
       --home "$HOME_DIR" \
       --keyring-backend "$KEYRING" \
       --node "$RPC" \
-      --yes --fees 0ulmn -o json)
+      --yes --fees "$FEES" \
+      --broadcast-mode block \
+      -o json)
 
-    LINK_HASH=$(echo "$LINK_RES" | jq -r '.txhash')
-    [ "$LINK_HASH" != "null" ] || error "Failed to extract txhash"
+    LINK_HASH=$(echo "$LINK_RES" | jq -r '.txhash // empty')
+    [ -n "$LINK_HASH" ] || error "Failed to extract PQC link tx hash"
 
-    step "Waiting PQC link-account..."
-    for _ in $(seq 1 30); do
-        CODE=$($BIN q tx "$LINK_HASH" --node "$RPC" -o json 2>/dev/null | jq -r '.code // empty')
-        if [ -n "$CODE" ]; then
-            [ "$CODE" = "0" ] || error "pqc link-account failed: code $CODE"
-            info "PQC linked successfully"
-            break
-        fi
-        sleep 1
-    done
+    CODE=$(echo "$LINK_RES" | jq -r '.code // 0')
+    [ "$CODE" = "0" ] || error "PQC link-account failed: code=$CODE"
+
+    info "PQC linked successfully (Tx: $LINK_HASH)"
 fi
 
 # ------------------------- REAL CONSENSUS PUBKEY -------------------------
@@ -118,18 +113,15 @@ RES=$($BIN tx staking create-validator "$TMP_JSON" \
     --gas-adjustment "$GAS_ADJ" \
     --yes \
     --fees "$FEES" \
-    --broadcast-mode sync \
+    --broadcast-mode block \
     -o json)
 
 echo "$RES"
 
 CODE=$(echo "$RES" | jq -r '.code // 0')
-if [ "$CODE" != "0" ]; then
-    error "create-validator failed: code=$CODE"
-fi
+[ "$CODE" = "0" ] || error "create-validator failed: code=$CODE"
 
 HASH=$(echo "$RES" | jq -r '.txhash // empty')
 
 info "SUCCESS - Validator created!"
 info "Tx: $HASH"
-
