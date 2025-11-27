@@ -65,7 +65,7 @@ else
       --keyring-backend "$KEYRING" \
       --node "$RPC" \
       --yes --fees "$FEES" \
-      --broadcast-mode block \
+      --broadcast-mode sync \
       -o json)
 
     LINK_HASH=$(echo "$LINK_RES" | jq -r '.txhash // empty')
@@ -113,7 +113,7 @@ RES=$($BIN tx staking create-validator "$TMP_JSON" \
     --gas-adjustment "$GAS_ADJ" \
     --yes \
     --fees "$FEES" \
-    --broadcast-mode block \
+    --broadcast-mode sync \
     -o json)
 
 echo "$RES"
