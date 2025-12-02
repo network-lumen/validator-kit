@@ -1,0 +1,49 @@
+# Lumen monitoring stack (sentry)
+
+This folder contains a minimal Prometheus + Grafana stack intended to run
+on a sentry node. The goal is to monitor a **validator** over the private
+Headscale/Tailscale network, while exposing Grafana securely.
+
+## Quick start
+
+On a sentry host that already runs a fullnode:
+
+```bash
+cd deploy/monitoring
+cp .env.example .env              # optional: adjust ports / admin user
+vim prometheus.yml                # set VALIDATOR Headscale IP
+docker compose up -d
+```
+
+This will:
+- start Prometheus (scraping the validator's `/metrics` endpoint)
+- start Grafana, with login from `.env`
+- expose Grafana via an Nginx reverse proxy:
+  - HTTP on `GRAFANA_HTTP_PORT` (default 3000)
+  - IP whitelisting configured in `nginx.conf`
+
+## Alerting
+
+- Prometheus loads rules from `alerts.yml` which contains:
+  - basic alerts for:
+    - validator down (`ValidatorDown`)
+    - validator lagging behind head (`ValidatorBehindHead`) – adjust metric
+      names and thresholds to match your chain
+  - optional host alerts (CPU) assuming you run `node_exporter`
+- Alertmanager:
+  - included as the `alertmanager` service in `docker-compose.yml`
+  - configured via `alertmanager.yml`
+  - email / chat integrations are left as placeholders for you to fill in
+
+## Security notes
+
+- Authentication:
+  - Grafana uses its own login (`GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD`)
+  - change these defaults before exposing anything to the Internet
+- IP whitelist:
+  - edit `nginx.conf` and replace the `allow` lines with your own IPs/CIDRs
+  - everything not explicitly allowed is denied
+- Validator exposure:
+  - the validator should only expose its metrics port over the private
+    Headscale network (e.g. bind to `0.0.0.0:26660` on a host that is
+    **not** reachable from the public Internet, or with firewall rules).

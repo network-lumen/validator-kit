@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: lumen-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      # Prometheus UI (optional, can be firewalled)
+      - "${PROMETHEUS_PORT:-9091}:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: lumen-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s/
+    volumes:
+      - grafana-data:/var/lib/grafana
+    expose:
+      - "3000"
+
+  grafana-proxy:
+    image: nginx:alpine
+    container_name: lumen-grafana-proxy
+    restart: unless-stopped
+    depends_on:
+      - grafana
+    ports:
+      # Public HTTP entrypoint for Grafana dashboard
+      - "${GRAFANA_HTTP_PORT:-3000}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: lumen-alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+
+volumes:
+  grafana-data:

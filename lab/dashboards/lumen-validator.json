@@ -1,0 +1,137 @@
+{
+  "id": null,
+  "uid": "lumen-node-lab",
+  "title": "Lumen Node (Lab)",
+  "timezone": "browser",
+  "schemaVersion": 30,
+  "version": 1,
+  "refresh": "5s",
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "job",
+        "label": "Job",
+        "datasource": "Prometheus",
+        "query": "label_values(up, job)",
+        "refresh": 1,
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "text": "lumen-validator",
+          "value": "lumen-validator",
+          "selected": true
+        }
+      },
+      {
+        "type": "query",
+        "name": "instance",
+        "label": "Instance",
+        "datasource": "Prometheus",
+        "query": "label_values(up{job=\"$job\"}, instance)",
+        "refresh": 1,
+        "includeAll": false,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Node up()",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "up{job=\"$job\",instance=\"$instance\"}",
+          "legendFormat": "{{job}} {{instance}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "graph",
+      "title": "Consensus height",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "cometbft_consensus_height{job=\"$job\",instance=\"$instance\"}",
+          "legendFormat": "height",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 6 }
+    },
+    {
+      "type": "graph",
+      "title": "Block interval (seconds)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(cometbft_consensus_block_interval_seconds_sum{job=\"$job\",instance=\"$instance\"}[5m]) / rate(cometbft_consensus_block_interval_seconds_count{job=\"$job\",instance=\"$instance\"}[5m])",
+          "legendFormat": "avg block interval",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 12 }
+    },
+    {
+      "type": "graph",
+      "title": "Block size (bytes)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "cometbft_consensus_block_size_bytes{job=\"$job\",instance=\"$instance\"}",
+          "legendFormat": "block size",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 18 }
+    },
+    {
+      "type": "graph",
+      "title": "Mempool size",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "cometbft_mempool_size{job=\"$job\",instance=\"$instance\"}",
+          "legendFormat": "mempool size",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 }
+    },
+    {
+      "type": "table",
+      "title": "All metric names for this node",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "count by(__name__) ({job=\"$job\",instance=\"$instance\"})",
+          "legendFormat": "{{__name__}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 30 }
+    },
+    {
+      "type": "table",
+      "title": "All metrics for this node (values)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "{job=\"$job\",instance=\"$instance\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 38 }
+    }
+  ]
+}

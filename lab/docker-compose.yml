@@ -1,0 +1,123 @@
+version: "3.9"
+
+x-lumen-node: &lumen-node
+  image: lumen-lab-node
+  working_dir: /deploy
+  volumes:
+    - ../:/deploy
+  restart: unless-stopped
+
+services:
+  # Headscale control-plane (lab instance)
+  headscale-lab:
+    image: headscale/headscale:0.23.0
+    container_name: headscale-lab
+    restart: unless-stopped
+    command: serve
+    volumes:
+      - ../headscale/config:/etc/headscale
+      - headscale-lab-data:/var/lib/headscale
+    ports:
+      - "18080:8080"   # HTTP control-plane
+      - "19090:9090"   # metrics
+
+  # Single validator using deploy/scripts/network/bootstrap.sh
+  validator:
+    <<: *lumen-node
+    build:
+      context: ../..
+      dockerfile: test_ia/Dockerfile
+      args:
+        LUMEN_BIN: deploy/bin/lumend
+    depends_on:
+      - headscale-lab
+    command: >
+      bash -lc "set -euo pipefail;
+                cd /deploy;
+                ./scripts/network/bootstrap.sh lab-validator --force;
+                ./bin/lumend start --home /root/.lumen --minimum-gas-prices 0ulmn"
+
+  # Two sentry/fullnodes using deploy/scripts/network/join.sh
+  sentry-a:
+    <<: *lumen-node
+    depends_on:
+      - validator
+    command: >
+      bash -lc "set -euo pipefail;
+                cd /deploy;
+                ./scripts/network/join.sh lab-sentry-a --force;
+                ./bin/lumend start --home /root/.lumen --minimum-gas-prices 0ulmn"
+
+  sentry-b:
+    <<: *lumen-node
+    depends_on:
+      - validator
+    command: >
+      bash -lc "set -euo pipefail;
+                cd /deploy;
+                ./scripts/network/join.sh lab-sentry-b --force;
+                ./bin/lumend start --home /root/.lumen --minimum-gas-prices 0ulmn"
+
+  # One-shot sentry rotation dry-run against the two sentries
+  sentry-rotation-test:
+    <<: *lumen-node
+    depends_on:
+      - sentry-a
+      - sentry-b
+    restart: "no"
+    command: >
+      bash -lc "set -euo pipefail;
+                cd /deploy;
+                sleep 30;
+                ./scripts/network/sentry_rotation.sh
+                  --active-service sentry-a
+                  --sleep-service sentry-b
+                  --active-rpc http://sentry-a:26657
+                  --sleep-rpc http://sentry-b:26657
+                  --once"
+
+  # Prometheus scraping validator metrics
+  prometheus-lab:
+    image: prom/prometheus:latest
+    container_name: lumen-prometheus-lab
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "${PROMETHEUS_LAB_PORT:-19091}:9090"
+
+  # Node exporter for host/container system metrics (lab)
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: lumen-node-exporter
+    restart: unless-stopped
+    ports:
+      - "${NODE_EXPORTER_LAB_PORT:-19100}:9100"
+
+  # Grafana with pre-provisioned Prometheus datasource and dashboard
+  grafana-lab:
+    image: grafana/grafana:latest
+    container_name: lumen-grafana-lab
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_LAB_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_LAB_ADMIN_PASSWORD:-changeme}
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s/
+    volumes:
+      - ./grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
+      - ./grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/provider.yml:ro
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+
+  grafana-lab-proxy:
+    image: nginx:alpine
+    container_name: lumen-grafana-lab-proxy
+    restart: unless-stopped
+    depends_on:
+      - grafana-lab
+    ports:
+      - "${GRAFANA_LAB_HTTP_PORT:-13000}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  headscale-lab-data:

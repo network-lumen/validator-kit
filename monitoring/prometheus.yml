@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s
+
+rule_files:
+  - "alerts.yml"
+
+scrape_configs:
+  # Validator metrics over Headscale/Tailscale
+  #
+  # Edit the target below with the validator's Headscale IP
+  # (or MagicDNS name) and metrics port. For example:
+  #   - "100.64.0.10:26660"
+  #
+  - job_name: "lumen-validator"
+    static_configs:
+      - targets:
+          - "CHANGE_ME_VALIDATOR_IP:26660"
+
