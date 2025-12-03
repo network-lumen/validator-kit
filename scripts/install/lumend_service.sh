@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # Create and start a systemd service for an existing lumend home.
-# Usage: sudo bash launch_service.sh [--force] [HOME_DIR] [USER]
+# Usage: sudo scripts/install/lumend_service.sh [--force] [HOME_DIR] [USER]
 #
-# - HOME_DIR defaults to /root/.lumen
-# - USER defaults to root
+# - If you omit HOME_DIR / USER, they default to the user that ran sudo
+#   (or root if there is no sudo context).
 
 set -euo pipefail
+
+if [[ "$EUID" -ne 0 ]]; then
+  echo "ERROR: this installer needs root privileges (sudo)."
+  echo "Re-run it with: sudo scripts/install/lumend_service.sh [--force] [HOME_DIR] [USER]"
+  exit 1
+fi
 
 FORCE=0
 if [ "${1:-}" = "--force" ]; then
@@ -13,8 +19,17 @@ if [ "${1:-}" = "--force" ]; then
   shift
 fi
 
-HOME_DIR="${1:-/root/.lumen}"
-RUN_USER="${2:-root}"
+# Default to the sudo-invoking user if present, otherwise root.
+if [[ -n "${SUDO_USER:-}" && "${SUDO_USER:-}" != "root" ]]; then
+  DEFAULT_USER="${SUDO_USER}"
+  DEFAULT_HOME="$(eval echo "~${SUDO_USER}")"
+else
+  DEFAULT_USER="root"
+  DEFAULT_HOME="/root"
+fi
+
+HOME_DIR="${1:-${DEFAULT_HOME}/.lumen}"
+RUN_USER="${2:-${DEFAULT_USER}}"
 BIN_PATH="/usr/local/bin/lumend"
 SERVICE_FILE="/etc/systemd/system/lumend.service"
 RPC_LADDR="${RPC_LADDR:-tcp://0.0.0.0:26657}"

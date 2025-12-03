@@ -39,7 +39,7 @@ and operators have a small set of simple, repeatable commands.
     to create and rotate state snapshots under `${HOME}/snapshots` by default
     for the operator that owns the node home (you can choose a different
     directory at install time, and override at runtime with the `SNAP_DIR`
-    environment variable)
+    environment variable). This script must be run with sudo.
   - `scripts/snapshot/restore_snapshot.sh` restores a snapshot into an
     existing home and restarts the service
 - Export for off-site backup:
@@ -84,7 +84,7 @@ High level steps:
 On the machine that will host Headscale, and as the Headscale operator account:
 
 ```bash
-cd headscale          # from deploy/
+cd headscale
 ./run/up.sh                      # start Headscale
 ./run/init.sh --user lumen --sentries 2
 ```
@@ -99,7 +99,7 @@ distribute individual keys to the corresponding validator / sentry hosts):
 
 On the validator machine:
 
-1. Clone this repo and go to `deploy/`:
+1. Clone this repo 
 
 ```bash
 git clone https://github.com/network-lumen/validator-kit.git
@@ -160,7 +160,7 @@ This provides the `node_*` metrics used by the “Hardware health” panels.
 
 On each sentry machine:
 
-1. Clone this repo and go to `deploy/`:
+1. Clone this repo
 
 ```bash
 git clone https://github.com/network-lumen/validator-kit.git
@@ -202,7 +202,7 @@ Use a different `HOME_DIR` / `USER` pair per sentry host as appropriate.
 On one of the sentry machines you can run the monitoring stack:
 
 ```bash
-cd monitoring          # from deploy/
+cd monitoring
 cp .env.example .env
 vim prometheus.yml    # set validator Headscale IP / metrics port
 vim nginx.conf        # set allowed admin IPs

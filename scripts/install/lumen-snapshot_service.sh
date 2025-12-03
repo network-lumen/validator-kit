@@ -5,6 +5,15 @@ echo ""
 echo "=== Lumen Snapshot Auto-Installer ==="
 echo ""
 
+# This script installs a snapshot binary under /usr/local/bin and a
+# systemd unit under /etc/systemd/system. It must be run as root, e.g.:
+#   sudo scripts/install/lumen-snapshot_service.sh
+if [[ "$EUID" -ne 0 ]]; then
+  echo "ERROR: this installer needs root privileges (sudo)."
+  echo "Re-run it with: sudo scripts/install/lumen-snapshot_service.sh"
+  exit 1
+fi
+
 # Try to guess the operator's home (user who launched sudo), then fall back
 # to the current HOME. This keeps defaults aligned with whoever owns the node.
 if [[ -n "${SUDO_USER:-}" && "${SUDO_USER:-}" != "root" ]]; then
