@@ -10,8 +10,7 @@ This directory contains everything needed to spin up:
 The goal is: the validator is never directly exposed to the public Internet,
 and operators have a small set of simple, repeatable commands.
 
-> All commands in this README assume you are inside the `deploy/` directory:
-> `cd /path/to/validator-kit/deploy`
+> All commands in this README assume you are inside the `validator-kit/` directory:
 
 ## Layout
 
@@ -37,9 +36,10 @@ and operators have a small set of simple, repeatable commands.
   - a backup folder in `~/.lumen/join-node.bak`
 - Continuous snapshots:
   - `scripts/install/lumen-snapshot_service.sh` installs a systemd service
-    to create and rotate state snapshots under `/root/snapshots` by default
-    (you can choose a different directory at install time, and override at
-    runtime with the `SNAP_DIR` environment variable)
+    to create and rotate state snapshots under `${HOME}/snapshots` by default
+    for the operator that owns the node home (you can choose a different
+    directory at install time, and override at runtime with the `SNAP_DIR`
+    environment variable)
   - `scripts/snapshot/restore_snapshot.sh` restores a snapshot into an
     existing home and restarts the service
 - Export for off-site backup:

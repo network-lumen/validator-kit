@@ -5,8 +5,16 @@ echo ""
 echo "=== Lumen Snapshot Auto-Installer ==="
 echo ""
 
-read -p "Node HOME directory? (/root/.lumen): " HOME_DIR
-HOME_DIR=${HOME_DIR:-/root/.lumen}
+# Try to guess the operator's home (user who launched sudo), then fall back
+# to the current HOME. This keeps defaults aligned with whoever owns the node.
+if [[ -n "${SUDO_USER:-}" && "${SUDO_USER:-}" != "root" ]]; then
+  DEFAULT_USER_HOME="$(eval echo "~${SUDO_USER}")"
+else
+  DEFAULT_USER_HOME="${HOME:-/root}"
+fi
+
+read -p "Node HOME directory? (${DEFAULT_USER_HOME}/.lumen): " HOME_DIR
+HOME_DIR=${HOME_DIR:-${DEFAULT_USER_HOME}/.lumen}
 
 read -p "Block interval between snapshots? (50): " INTERVAL
 INTERVAL=${INTERVAL:-50}
@@ -14,8 +22,8 @@ INTERVAL=${INTERVAL:-50}
 read -p "Snapshots to keep? (10): " RETENTION
 RETENTION=${RETENTION:-10}
 
-read -p "Snapshot directory? (/root/snapshots): " SNAP_DIR
-SNAP_DIR=${SNAP_DIR:-/root/snapshots}
+read -p "Snapshot directory? (${DEFAULT_USER_HOME}/snapshots): " SNAP_DIR
+SNAP_DIR=${SNAP_DIR:-${DEFAULT_USER_HOME}/snapshots}
 
 echo ""
 read -p "Install systemd service? (Y/n): " INSTALL_SYSTEMD
