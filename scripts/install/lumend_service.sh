@@ -30,7 +30,27 @@ fi
 
 HOME_DIR="${1:-${DEFAULT_HOME}/.lumen}"
 RUN_USER="${2:-${DEFAULT_USER}}"
-BIN_PATH="/usr/local/bin/lumend"
+# Try to suggest a reasonable default for the lumend binary:
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_BIN="${REPO_ROOT}/bin/lumend"
+
+FOUND_BIN=""
+if command -v lumend >/dev/null 2>&1; then
+  FOUND_BIN="$(command -v lumend)"
+fi
+
+if [[ -n "$FOUND_BIN" ]]; then
+  DEFAULT_BIN="$FOUND_BIN"
+elif [[ -x "$REPO_BIN" ]]; then
+  DEFAULT_BIN="$REPO_BIN"
+else
+  DEFAULT_BIN="/usr/local/bin/lumend"
+fi
+
+read -p "Path to lumend binary? (${DEFAULT_BIN}): " BIN_PATH
+BIN_PATH="${BIN_PATH:-$DEFAULT_BIN}"
+
 SERVICE_FILE="/etc/systemd/system/lumend.service"
 RPC_LADDR="${RPC_LADDR:-tcp://0.0.0.0:26657}"
 P2P_LADDR="${P2P_LADDR:-tcp://0.0.0.0:26656}"
@@ -38,7 +58,8 @@ API_ADDR="${API_ADDR:-tcp://0.0.0.0:1317}"
 GRPC_ADDR="${GRPC_ADDR:-0.0.0.0:9090}"
 
 if [ ! -x "${BIN_PATH}" ]; then
-  echo "lumend binary not found at ${BIN_PATH}. Install it first." >&2
+  echo "lumend binary not found or not executable at ${BIN_PATH}." >&2
+  echo "Install it or rerun this script and point to the correct path." >&2
   exit 1
 fi
 

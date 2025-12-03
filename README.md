@@ -103,7 +103,7 @@ On the validator machine:
 
 ```bash
 git clone https://github.com/network-lumen/validator-kit.git
-cd validator-kit/deploy
+cd validator-kit/
 ```
 
 2. Install the Tailscale client (configured to use your Headscale URL).
@@ -134,10 +134,11 @@ This will:
 sudo scripts/install/lumend_service.sh [HOME_DIR] [USER]
 ```
 
-- if you bootstrapped as `root`, you can omit arguments (`HOME_DIR` defaults
-  to `/root/.lumen`)
-- if you bootstrapped as a non-root user, pass the matching home and user,
-  e.g. `sudo scripts/install/lumend_service.sh /home/lumen/.lumen lumen`
+- the installer must be run with `sudo` and will:
+  - default `HOME_DIR` / `USER` to the account that ran sudo
+  - ask you which `lumend` binary to use (auto-detects a `lumend` in `$PATH`
+    or the repo `bin/lumend` if present)
+  - create / update `lumend.service` accordingly
 
 6. (Optional) install automatic snapshots on the validator:
 
@@ -164,7 +165,7 @@ On each sentry machine:
 
 ```bash
 git clone https://github.com/network-lumen/validator-kit.git
-cd validator-kit/deploy
+cd validator-kit/
 ```
 
 2. Install the Tailscale client.
