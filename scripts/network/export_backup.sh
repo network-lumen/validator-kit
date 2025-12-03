@@ -11,17 +11,21 @@ set -euo pipefail
 # off the server for disaster recovery.
 #
 # Usage:
-#   sudo deploy/scripts/network/export_backup.sh [HOME_DIR] [SNAP_DIR] [OUT_DIR]
+#   deploy/scripts/network/export_backup.sh [HOME_DIR] [SNAP_DIR] [OUT_DIR]
 #
-# Defaults:
-#   HOME_DIR = /root/.lumen
-#   SNAP_DIR = /root/snapshots
-#   OUT_DIR  = /root/exports
+# Run it as the same user that owns the node home, or pass an explicit
+# HOME_DIR/SNAP_DIR/OUT_DIR if you run it with sudo.
+#
+# Defaults (based on the current $HOME):
+#   HOME_DIR = $HOME/.lumen
+#   SNAP_DIR = $HOME/snapshots
+#   OUT_DIR  = $HOME/exports
 ###############################################
 
-HOME_DIR="${1:-/root/.lumen}"
-SNAP_DIR="${2:-/root/snapshots}"
-OUT_DIR="${3:-/root/exports}"
+DEFAULT_HOME="${HOME:-/root}"
+HOME_DIR="${1:-${DEFAULT_HOME}/.lumen}"
+SNAP_DIR="${2:-${DEFAULT_HOME}/snapshots}"
+OUT_DIR="${3:-${DEFAULT_HOME}/exports}"
 
 BACKUP_DIR="$HOME_DIR/first-node.bak"
 
@@ -67,4 +71,3 @@ echo
 echo "✅ Done."
 echo "Archive ready to copy off-host:"
 echo "  $ARCHIVE"
-

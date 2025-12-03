@@ -18,16 +18,16 @@ and operators have a small set of simple, repeatable commands.
   - `fullnode/` – template configs for a fullnode / sentry
   - `genesis.json`, `seeds.txt`, `peers.txt`, `sentries.txt`
 - `scripts/`
-  - `network/bootstrap.sh` – bootstrap a new single-validator chain
+  - `scripts/network/bootstrap.sh` – bootstrap a new single-validator chain
     (validator + initial genesis) from the repo config
-  - `network/join.sh` – join the network as a fullnode/sentry
+  - `scripts/network/join.sh` – join the network as a fullnode/sentry
   - other helper scripts (staking, services, snapshots)
 - `headscale/` – local Headscale control-plane (see its README)
 - `monitoring/` – Prometheus + Grafana stack (see its README)
 
 ## Keys, backups and snapshots
 
-- Single-validator chain bootstrap (`network/bootstrap.sh`) automatically creates:
+- Single-validator chain bootstrap (`scripts/network/bootstrap.sh`) automatically creates:
   - a backup folder in `~/.lumen/first-node.bak` with:
     - mnemonic, keyring, PQC keys, configs, metadata, initial genesis
 - Fullnode/sentry join (`network/join.sh`) creates:
