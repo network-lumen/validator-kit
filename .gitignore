@@ -1,0 +1,15 @@
+# Local environment and secrets (deploy repo)
+
+# Per-service env files
+.env
+headscale/.env
+monitoring/.env
+lab/.env
+
+# Headscale auth keys and TLS certs
+headscale/headscale_keys_*.txt
+headscale/proxy/certs/
+
+# Headscale state backups
+headscale/backups/
+

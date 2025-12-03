@@ -54,6 +54,43 @@ Run this as your Headscale administrator account — it will output all auth
 keys into a local file, which you should keep private and from which you
 then distribute individual keys to validator / sentry operators:
 
+## Backing up and restoring Headscale state
+
+Headscale stores all its state (users, nodes, keys, DERP/private keys, etc.)
+in the Docker volume `headscale-data`. You should back this up after you have
+finished configuring your network, and whenever you make important changes
+(adding/removing nodes, changing ACLs).
+
+From `deploy/headscale` you can take a snapshot into a directory of your choice
+(ideally an offline USB key or an encrypted folder):
+
+```bash
+cd deploy/headscale
+./run/backup.sh                    # saves into ./backups/
+./run/backup.sh /media/usb/lumen   # custom target folder
+```
+
+This stops Headscale for a few seconds, tars the volume into a file like:
+
+- `headscale_state_YYYYMMDD_HHMMSS.tar.gz`
+
+To restore on the same machine or a new one:
+
+```bash
+cd deploy/headscale
+./run/restore.sh /media/usb/lumen/headscale_state_YYYYMMDD_HHMMSS.tar.gz
+```
+
+This will:
+- stop the `headscale` service
+- wipe the `headscale-data` volume and restore the archive contents
+- start `headscale` again with the restored state
+
+As long as you keep the same `server_url` in `config/config.yaml` and point
+DNS for that hostname to the new machine, your existing nodes will reconnect
+using the restored control-plane.
+
+
 ```bash
 ./run/init.sh --user lumen --sentries 2
 ```

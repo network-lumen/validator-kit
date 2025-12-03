@@ -10,15 +10,14 @@
 #
 # https://myheadscale.example.com:443
 #
-# For local testing with the docker-compose in this folder, the default in
-# `.env.example` is http://127.0.0.1:8080. You can keep that and update it
-# later when you expose Headscale on a public hostname.
-server_url: http://127.0.0.1:8080
+# For your production setup this is the public HTTPS URL that Tailscale
+# clients will use to talk to Headscale:
+server_url: https://myheadscale.example.com
 
 # Address to listen to / bind to on the server
 #
-# For production:
-# listen_addr: 0.0.0.0:8080
+# Headscale itself listens on 8080 inside the docker-compose stack and
+# is typically exposed via the TLS proxy on port 443.
 listen_addr: 0.0.0.0:8080
 
 # Address to listen to /metrics and /debug, you may want
