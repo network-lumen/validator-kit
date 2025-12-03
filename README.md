@@ -106,11 +106,14 @@ git clone https://github.com/network-lumen/validator-kit.git
 cd validator-kit/
 ```
 
-2. Install the Tailscale client (configured to use your Headscale URL).
-2. Use the validator auth key:
+2. Install the Tailscale client (configured to use your Headscale URL). On a
+   Debian/Ubuntu host you can use the helper:
 
 ```bash
-sudo tailscale up --login-server http://<HEADSCALE_HOST>:8080 --authkey <validator-key>
+sudo scripts/install/tailscale.sh \
+  --login-server https://lmn-ops.cloud \
+  --authkey <validator-key> \
+  --hostname validator-1
 ```
 
 3. Optionally adjust validator templates and peers in `config/validator/*.toml`
@@ -168,11 +171,13 @@ git clone https://github.com/network-lumen/validator-kit.git
 cd validator-kit/
 ```
 
-2. Install the Tailscale client.
-3. Use one of the sentry auth keys:
+2. Install the Tailscale client. On Debian/Ubuntu you can use:
 
 ```bash
-sudo tailscale up --login-server http://<HEADSCALE_HOST>:8080 --authkey <sentry-key>
+sudo scripts/install/tailscale.sh \
+  --login-server https://lmn-ops.cloud \
+  --authkey <sentry-key> \
+  --hostname sentry-a
 ```
 
 4. Optionally adjust fullnode templates and peers in `config/fullnode/*.toml`
