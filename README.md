@@ -10,6 +10,9 @@ This directory contains everything needed to spin up:
 The goal is: the validator is never directly exposed to the public Internet,
 and operators have a small set of simple, repeatable commands.
 
+> All commands in this README assume you are inside the `deploy/` directory:
+> `cd /path/to/validator-kit/deploy`
+
 ## Layout
 
 - `bin/` – `lumend` binary used by the helper scripts
@@ -25,7 +28,7 @@ and operators have a small set of simple, repeatable commands.
 - `headscale/` – local Headscale control-plane (see its README)
 - `monitoring/` – Prometheus + Grafana stack (see its README)
 
-## Keys, backups and snapshots
+## Keys, backups and snapshots (overview)
 
 - Single-validator chain bootstrap (`scripts/network/bootstrap.sh`) automatically creates:
   - a backup folder in `~/.lumen/first-node.bak` with:
@@ -52,6 +55,20 @@ and operators have a small set of simple, repeatable commands.
    section of the Grafana dashboard.
 
 
+## Configure your topology
+
+Before bootstrapping anything, you can tune the templates in `config/`:
+
+- `config/validator/*.toml` – ports, logging, pruning and Prometheus for the validator
+- `config/fullnode/*.toml` – same for sentries / fullnodes
+- `config/seeds.txt` – optional seed nodes (one `node_id@host:port` per line)
+- `config/peers.txt` – persistent peers you trust (validator ↔ sentries, etc.)
+- `config/sentries.txt` – public sentry addresses you may want to expose to others
+
+These files are copied as-is into each node home by the scripts, so they become
+the “source of truth” you keep under Git.
+
+
 ## Typical flow: 1 validator + N sentries
 
 High level steps:
@@ -67,7 +84,7 @@ High level steps:
 On the machine that will host Headscale, and as the Headscale operator account:
 
 ```bash
-cd headscale
+cd headscale          # from deploy/
 ./run/up.sh                      # start Headscale
 ./run/init.sh --user lumen --sentries 2
 ```
@@ -82,17 +99,26 @@ distribute individual keys to the corresponding validator / sentry hosts):
 
 On the validator machine:
 
-1. Install the Tailscale client (configured to use your Headscale URL).
+1. Clone this repo and go to `deploy/`:
+
+```bash
+git clone https://github.com/network-lumen/validator-kit.git
+cd validator-kit/deploy
+```
+
+2. Install the Tailscale client (configured to use your Headscale URL).
 2. Use the validator auth key:
 
 ```bash
 sudo tailscale up --login-server http://<HEADSCALE_HOST>:8080 --authkey <validator-key>
 ```
 
-3. Bootstrap the validator from this repo:
+3. Optionally adjust validator templates and peers in `config/validator/*.toml`
+   and `config/{seeds,peers,sentries}.txt`.
+
+4. Bootstrap the validator from this repo:
 
 ```bash
-cd /path/to/repo
 scripts/network/bootstrap.sh <moniker> --force
 ```
 
@@ -102,33 +128,81 @@ This will:
 - generate validator + PQC keys
 - create and collect the gentx
 
+5. (Recommended) run the validator as a systemd service:
+
+```bash
+sudo scripts/install/lumend_service.sh [HOME_DIR] [USER]
+```
+
+- if you bootstrapped as `root`, you can omit arguments (`HOME_DIR` defaults
+  to `/root/.lumen`)
+- if you bootstrapped as a non-root user, pass the matching home and user,
+  e.g. `sudo scripts/install/lumend_service.sh /home/lumen/.lumen lumen`
+
+6. (Optional) install automatic snapshots on the validator:
+
+```bash
+sudo scripts/install/lumen-snapshot_service.sh
+```
+
+This walks you through HOME, snapshot directory, and interval/retention.
+
+7. (Optional) install system metrics exporter:
+
+```bash
+sudo scripts/install/node_exporter_service.sh
+```
+
+This provides the `node_*` metrics used by the “Hardware health” panels.
+
+
 ### 3. Sentry hosts
 
 On each sentry machine:
 
-1. Install the Tailscale client.
-2. Use one of the sentry auth keys:
+1. Clone this repo and go to `deploy/`:
+
+```bash
+git clone https://github.com/network-lumen/validator-kit.git
+cd validator-kit/deploy
+```
+
+2. Install the Tailscale client.
+3. Use one of the sentry auth keys:
 
 ```bash
 sudo tailscale up --login-server http://<HEADSCALE_HOST>:8080 --authkey <sentry-key>
 ```
 
-3. Join the network as a fullnode:
+4. Optionally adjust fullnode templates and peers in `config/fullnode/*.toml`
+   and `config/{seeds,peers,sentries}.txt`.
+
+5. Join the network as a fullnode:
 
 ```bash
-cd /path/to/repo
 scripts/network/join.sh <moniker> --force
 ```
 
 You can adjust `config/seeds.txt`, `peers.txt` and `sentries.txt` to
 reflect your topology and the peers you trust (including private Headscale IPs).
 
+6. (Recommended) install a systemd service for each sentry:
+
+```bash
+sudo scripts/install/lumend_service.sh [HOME_DIR] [USER]
+```
+
+Use a different `HOME_DIR` / `USER` pair per sentry host as appropriate.
+
+7. (Optional) install the snapshot service and node_exporter just like on the
+   validator if you also want on-host snapshots and hardware metrics.
+
 ### 4. Monitoring on a sentry (optional)
 
 On one of the sentry machines you can run the monitoring stack:
 
 ```bash
-cd /path/to/repo/monitoring
+cd monitoring          # from deploy/
 cp .env.example .env
 vim prometheus.yml    # set validator Headscale IP / metrics port
 vim nginx.conf        # set allowed admin IPs
