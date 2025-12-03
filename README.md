@@ -30,7 +30,7 @@ and operators have a small set of simple, repeatable commands.
 - Single-validator chain bootstrap (`scripts/network/bootstrap.sh`) automatically creates:
   - a backup folder in `~/.lumen/first-node.bak` with:
     - mnemonic, keyring, PQC keys, configs, metadata, initial genesis
-- Fullnode/sentry join (`network/join.sh`) creates:
+- Fullnode/sentry join (`scripts/network/join.sh`) creates:
   - a backup folder in `~/.lumen/join-node.bak`
 - Continuous snapshots:
   - `scripts/install/lumen-snapshot_service.sh` installs a systemd service
@@ -43,7 +43,8 @@ and operators have a small set of simple, repeatable commands.
   - `scripts/network/export_backup.sh` bundles:
     - `first-node.bak`
     - the latest snapshot
-    into a single archive in `/root/exports` (by default)
+    into a single archive in `$HOME/exports` by default (or another directory
+    if you pass it explicitly)
  - `scripts/install/node_exporter_service.sh` installs Prometheus
    `node_exporter` as a systemd service on the host to expose system-level
    metrics (CPU, RAM, disk, etc.) on `127.0.0.1:9100` by default. Run it
@@ -66,7 +67,7 @@ High level steps:
 On the machine that will host Headscale, and as the Headscale operator account:
 
 ```bash
-cd deploy/headscale
+cd headscale
 ./run/up.sh                      # start Headscale
 ./run/init.sh --user lumen --sentries 2
 ```
@@ -75,7 +76,7 @@ This creates one auth key for the validator and two for sentries. Keys are
 written to a file like, owned by this operator account (keep it private and
 distribute individual keys to the corresponding validator / sentry hosts):
 
-- `deploy/headscale/headscale_keys_lumen_<timestamp>.txt`
+- `headscale/headscale_keys_lumen_<timestamp>.txt`
 
 ### 2. Validator host
 
@@ -92,12 +93,12 @@ sudo tailscale up --login-server http://<HEADSCALE_HOST>:8080 --authkey <validat
 
 ```bash
 cd /path/to/repo
-deploy/scripts/network/bootstrap.sh <moniker> --force
+scripts/network/bootstrap.sh <moniker> --force
 ```
 
 This will:
 - create a fresh `$HOME/.lumen` home
-- inject the configs from `deploy/config/validator`
+- inject the configs from `config/validator`
 - generate validator + PQC keys
 - create and collect the gentx
 
@@ -116,10 +117,10 @@ sudo tailscale up --login-server http://<HEADSCALE_HOST>:8080 --authkey <sentry-
 
 ```bash
 cd /path/to/repo
-deploy/scripts/network/join.sh <moniker> --force
+scripts/network/join.sh <moniker> --force
 ```
 
-You can adjust `deploy/config/seeds.txt`, `peers.txt` and `sentries.txt` to
+You can adjust `config/seeds.txt`, `peers.txt` and `sentries.txt` to
 reflect your topology and the peers you trust (including private Headscale IPs).
 
 ### 4. Monitoring on a sentry (optional)
@@ -127,7 +128,7 @@ reflect your topology and the peers you trust (including private Headscale IPs).
 On one of the sentry machines you can run the monitoring stack:
 
 ```bash
-cd /path/to/repo/deploy/monitoring
+cd /path/to/repo/monitoring
 cp .env.example .env
 vim prometheus.yml    # set validator Headscale IP / metrics port
 vim nginx.conf        # set allowed admin IPs
