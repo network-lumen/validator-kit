@@ -43,7 +43,7 @@ and operators have a small set of simple, repeatable commands.
   - `scripts/snapshot/restore_snapshot.sh` restores a snapshot into an
     existing home and restarts the service
 - Export for off-site backup:
- - `scripts/network/export_backup.sh` bundles:
+  - `scripts/network/export_backup.sh` bundles:
     - `first-node.bak`
     - the latest snapshot
     into a single archive in `$HOME/exports` by default (or another directory
@@ -58,6 +58,10 @@ and operators have a small set of simple, repeatable commands.
  - `scripts/network/reload_peers.sh` reloads `persistent_peers` in a local
    `config.toml` from the current `config/peers.txt` contents and can
    optionally restart the `lumend` service.
+ - `scripts/network/state_sync.sh` configures the `[statesync]` section of
+   a node's `config.toml` by querying a trusted RPC server for the latest
+   height and computing an appropriate trust height/hash, so new sentries
+   can bootstrap quickly without replaying all historical blocks.
  - `scripts/install/node_exporter_service.sh` installs Prometheus
    `node_exporter` as a systemd service on the host to expose system-level
    metrics (CPU, RAM, disk, etc.) on `127.0.0.1:9100` by default. Run it
