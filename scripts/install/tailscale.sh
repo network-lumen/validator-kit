@@ -8,7 +8,7 @@ set -euo pipefail
 #
 # Usage (from deploy/):
 #   sudo scripts/install/tailscale.sh \
-#     --login-server https://lmn-ops.cloud \
+#     --login-server https://headscale.example.com \
 #     --authkey tskey-xxxxxxxx \
 #     --hostname validator-1
 #
@@ -84,7 +84,7 @@ if [[ -z "$LOGIN_SERVER" || -z "$AUTHKEY" ]]; then
   echo "[3/3] LOGIN_SERVER or AUTHKEY not provided; not running 'tailscale up'." >&2
   echo "Example:" >&2
   echo "  sudo scripts/install/tailscale.sh \\" >&2
-  echo "    --login-server https://lmn-ops.cloud \\" >&2
+  echo "    --login-server https://headscale.example.com \\" >&2
   echo "    --authkey tskey-xxxxxxxx \\" >&2
   echo "    --hostname validator-1" >&2
   exit 1
@@ -102,4 +102,3 @@ tailscale up "${ARGS[@]}"
 
 echo
 echo "✅ Tailscale installed and node joined to: $LOGIN_SERVER"
-

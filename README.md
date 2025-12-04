@@ -43,11 +43,21 @@ and operators have a small set of simple, repeatable commands.
   - `scripts/snapshot/restore_snapshot.sh` restores a snapshot into an
     existing home and restarts the service
 - Export for off-site backup:
-  - `scripts/network/export_backup.sh` bundles:
+ - `scripts/network/export_backup.sh` bundles:
     - `first-node.bak`
     - the latest snapshot
     into a single archive in `$HOME/exports` by default (or another directory
     if you pass it explicitly)
+ - `scripts/network/add_peer.sh` appends a persistent peer
+   (`node_id@host:port`) to `config/peers.txt`, updates the local
+   `config.toml` if a node home exists, and can optionally restart the
+   `lumend` systemd service.
+ - `scripts/network/remove_peer.sh` removes a persistent peer from
+   `config/peers.txt`, keeps the local `config.toml` in sync, and can
+   optionally restart the `lumend` service.
+ - `scripts/network/reload_peers.sh` reloads `persistent_peers` in a local
+   `config.toml` from the current `config/peers.txt` contents and can
+   optionally restart the `lumend` service.
  - `scripts/install/node_exporter_service.sh` installs Prometheus
    `node_exporter` as a systemd service on the host to expose system-level
    metrics (CPU, RAM, disk, etc.) on `127.0.0.1:9100` by default. Run it
@@ -111,7 +121,7 @@ cd validator-kit/
 
 ```bash
 sudo scripts/install/tailscale.sh \
-  --login-server https://lmn-ops.cloud \
+  --login-server https://headscale.example.com \
   --authkey <validator-key> \
   --hostname validator-1
 ```
@@ -159,6 +169,14 @@ sudo scripts/install/node_exporter_service.sh
 
 This provides the `node_*` metrics used by the “Hardware health” panels.
 
+8. When you add or rotate sentries, you can append the validator’s
+   persistent peers string from this repo and keep the local node
+   home in sync using:
+
+```bash
+scripts/network/add_peer.sh --peer "<node_id>@100.64.0.2:26656"
+```
+
 
 ### 3. Sentry hosts
 
@@ -175,7 +193,7 @@ cd validator-kit/
 
 ```bash
 sudo scripts/install/tailscale.sh \
-  --login-server https://lmn-ops.cloud \
+  --login-server https://headscale.example.com \
   --authkey <sentry-key> \
   --hostname sentry-a
 ```

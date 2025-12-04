@@ -59,12 +59,10 @@ if [[ ! -x "$BIN" ]]; then
   exit 1
 fi
 
-if [[ -x "$DEPS/jq" ]]; then
-  JQ="$DEPS/jq"
-elif command -v jq >/dev/null 2>&1; then
+if command -v jq >/dev/null 2>&1; then
   JQ="$(command -v jq)"
 else
-  echo "❌ Missing jq (expected at $DEPS/jq or in PATH)"
+  echo "❌ Missing jq in PATH. Please install jq (e.g. 'sudo apt install jq')."
   exit 1
 fi
 

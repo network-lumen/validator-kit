@@ -14,22 +14,18 @@
   ],
   "groups": {
     "group:validators": ["lumen:validator-*"],
-    "group:sentries": ["lumen:sentry-*"],
-    "group:ops": ["lumen:ops-*"]
+    "group:sentries": ["lumen:sentry-*"]
   },
   "acls": [
     {
-      "//": "Allow sentries to reach validators on any port (P2P, RPC, metrics, etc).",
+      "//": "Allow only sentry nodes to reach the validator tail IP on any port (P2P, RPC, metrics, etc).",
       "action": "accept",
-      "src": ["group:sentries"],
-      "dst": ["group:validators:*"]
-    },
-    {
-      "//": "Allow ops machines to reach everything in the tailnet.",
-      "action": "accept",
-      "src": ["group:ops"],
-      "dst": ["*:*"]
+      "src": [
+        "100.64.0.2/32",
+        "100.64.0.3/32"
+      ],
+      "dst": ["100.64.0.1/32:*"]
     }
   ]
-}
 
+}

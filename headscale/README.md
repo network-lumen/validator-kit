@@ -54,6 +54,42 @@ Run this as your Headscale administrator account — it will output all auth
 keys into a local file, which you should keep private and from which you
 then distribute individual keys to validator / sentry operators:
 
+## TLS certificates and trusting a self-signed CA
+
+For production you should use a proper certificate (e.g. via Let's Encrypt),
+but for private setups it is often enough to use a self-signed certificate and
+trust it explicitly on your nodes.
+
+On the Headscale host (your control-plane machine), from the repo root:
+
+```bash
+cd deploy/headscale
+mkdir -p proxy/certs
+openssl req -x509 -nodes -newkey rsa:4096 -days 365 \
+  -subj "/CN=headscale.example.com" \
+  -keyout proxy/certs/privkey.pem \
+  -out proxy/certs/fullchain.pem
+```
+
+This is what the tooling in this repo expects by default (`nginx.conf` points
+to `/etc/nginx/certs/fullchain.pem` and `/etc/nginx/certs/privkey.pem`, which
+are bind-mounted from `proxy/certs/` by docker-compose).
+
+On each validator / sentry node you then need to trust this CA certificate so
+that `tailscale up --login-server https://headscale.example.com` does not fail with
+`certificate signed by unknown authority`. On Debian/Ubuntu-like systems:
+
+```bash
+scp deploy/headscale/proxy/certs/fullchain.pem user@node:/tmp/headscale-ca.pem
+ssh user@node
+sudo cp /tmp/headscale-ca.pem /usr/local/share/ca-certificates/headscale.crt
+sudo update-ca-certificates
+sudo systemctl restart tailscaled
+```
+
+After this, `curl https://headscale.example.com/health` from the node should succeed
+*without* using `-k`, and `tailscale up` should connect cleanly to Headscale.
+
 ## Backing up and restoring Headscale state
 
 Headscale stores all its state (users, nodes, keys, DERP/private keys, etc.)
