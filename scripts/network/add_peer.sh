@@ -129,6 +129,27 @@ if [[ -f "$CFG_TOML" ]]; then
   # Use sed to replace the persistent_peers line
   sed -i "s|^persistent_peers *=.*|persistent_peers = \"$NEW\"|" "$CFG_TOML"
   echo "✔ Updated $CFG_TOML"
+
+  # Also ensure max_num_inbound_peers is at least the number of peers.
+  # This is mainly relevant on the validator, where defaults may be 0.
+  PEER_COUNT=0
+  IFS=',' read -r -a PEER_ARR <<<"$NEW"
+  for _ in "${PEER_ARR[@]}"; do
+    if [[ -n "${_}" ]]; then
+      PEER_COUNT=$((PEER_COUNT + 1))
+    fi
+  done
+
+  if grep -q '^max_num_inbound_peers' "$CFG_TOML"; then
+    CURRENT_INBOUND=$(grep '^max_num_inbound_peers' "$CFG_TOML" | sed 's/[^0-9]//g' || echo "0")
+    if [[ -z "$CURRENT_INBOUND" ]]; then
+      CURRENT_INBOUND=0
+    fi
+    if (( PEER_COUNT > 0 && CURRENT_INBOUND < PEER_COUNT )); then
+      sed -i "s|^max_num_inbound_peers *=.*|max_num_inbound_peers = $PEER_COUNT|" "$CFG_TOML"
+      echo "✔ Bumped max_num_inbound_peers to $PEER_COUNT in $CFG_TOML"
+    fi
+  fi
 else
   echo "ℹ No local config at $CFG_TOML (skipping node home update)"
 fi
@@ -157,4 +178,3 @@ fi
 
 echo "Done. Current peers string:"
 echo "  $NEW"
-
