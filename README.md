@@ -62,6 +62,14 @@ and operators have a small set of simple, repeatable commands.
    a node's `config.toml` by querying a trusted RPC server for the latest
    height and computing an appropriate trust height/hash, so new sentries
    can bootstrap quickly without replaying all historical blocks.
+ - `scripts/network/lockdown_validator_firewall.sh` applies a strict
+   iptables/ip6tables firewall profile on the validator host: only SSH,
+   P2P (26656) and Prometheus (26660) over the Tailscale interface are
+   allowed in, everything else is dropped by default.
+ - `scripts/network/scrub_validator_keys.sh` removes local Cosmos account
+   keyrings and PQC keystores (and optionally local backups and shell
+   history) from a validator host so it can run without holding any
+   funds-signing keys; it does not touch the consensus key.
  - `scripts/install/node_exporter_service.sh` installs Prometheus
    `node_exporter` as a systemd service on the host to expose system-level
    metrics (CPU, RAM, disk, etc.) on `127.0.0.1:9100` by default. Run it
