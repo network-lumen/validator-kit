@@ -12,19 +12,30 @@
     "",
     "See: https://tailscale.com/kb/1018/acls/ for full syntax."
   ],
-  "groups": {
-    "group:validators": ["lumen:validator-*"],
-    "group:sentries": ["lumen:sentry-*"]
-  },
+  "groups": {},
   "acls": [
     {
-      "//": "Allow only sentry nodes to reach the validator tail IP on any port (P2P, RPC, metrics, etc).",
+      "//": "Sentries <-> validator on any port (P2P, RPC, metrics, etc).",
       "action": "accept",
       "src": [
         "100.64.0.2/32",
-        "100.64.0.3/32"
+        "100.64.0.3/32",
+        "100.64.0.1/32"
       ],
-      "dst": ["100.64.0.1/32:*"]
+      "dst": [
+        "100.64.0.1/32:*",
+        "100.64.0.2/32:*",
+        "100.64.0.3/32:*"
+      ]
+    },
+    {
+      "//": "ops-laptop can reach sentries (SSH + Grafana + metrics, etc.), but not the validator.",
+      "action": "accept",
+      "src": ["100.64.0.4/32"],
+      "dst": [
+        "100.64.0.2/32:*",
+        "100.64.0.3/32:*"
+      ]
     }
   ]
 

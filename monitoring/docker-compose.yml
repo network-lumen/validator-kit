@@ -20,8 +20,12 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
       - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s/
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/json/lumen-validator.json
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./grafana-datasource.yml:/etc/grafana/provisioning/datasources/lumen.yml:ro
+      - ./grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/lumen.yml:ro
+      - ./dashboards:/etc/grafana/provisioning/dashboards/json:ro
     expose:
       - "3000"
 
