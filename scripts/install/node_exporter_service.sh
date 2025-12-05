@@ -7,7 +7,7 @@ set -euo pipefail
 # - Installs to /usr/local/bin/node_exporter
 # - Creates user node_exporter
 # - Creates and enables node_exporter.service
-# Default listen address: 127.0.0.1:9100 (safe)
+# Default listen address: 0.0.0.0:9100 (reachable from Tailscale / LAN)
 #
 # Usage (on validator / sentry host):
 #   sudo deploy/scripts/install/node_exporter_service.sh
@@ -34,8 +34,8 @@ case "$ARCH" in
   *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
-read -p "Listen address? (127.0.0.1:9100): " LISTEN_ADDR
-LISTEN_ADDR="${LISTEN_ADDR:-127.0.0.1:9100}"
+read -p "Listen address? (0.0.0.0:9100): " LISTEN_ADDR
+LISTEN_ADDR="${LISTEN_ADDR:-0.0.0.0:9100}"
 
 echo
 echo "Version      : $VERSION"
@@ -114,4 +114,3 @@ echo "      - targets:"
 echo "          - \"<validator-host>:9100\""
 echo "          - \"<sentry-a-host>:9100\""
 echo "          - \"<sentry-b-host>:9100\""
-
