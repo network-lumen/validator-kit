@@ -64,8 +64,9 @@ and operators have a small set of simple, repeatable commands.
    can bootstrap quickly without replaying all historical blocks.
  - `scripts/network/lockdown_validator_firewall.sh` applies a strict
    iptables/ip6tables firewall profile on the validator host: only SSH,
-   P2P (26656) and Prometheus (26660) over the Tailscale interface are
-   allowed in, everything else is dropped by default.
+   P2P (26656), Prometheus (26660) and (optionally) node_exporter (9100)
+   over the Tailscale interface are allowed in, everything else is dropped
+   by default.
  - `scripts/network/scrub_validator_keys.sh` removes local Cosmos account
    keyrings and PQC keystores (and optionally local backups and shell
    history) from a validator host so it can run without holding any

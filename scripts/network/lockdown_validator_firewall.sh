@@ -10,7 +10,8 @@ set -euo pipefail
 #   - allows established/related traffic
 #   - allows loopback
 #   - allows SSH on tailscale0 only (by default)
-#   - allows P2P (26656) + Prometheus (26660) on tailscale0 only
+#   - allows P2P (26656) + Prometheus (26660) + node_exporter (9100) on
+#     tailscale0 only
 #   - leaves OUTPUT fully open
 #
 # It creates a backup of existing rules under:
@@ -24,12 +25,14 @@ set -euo pipefail
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--tailscale-if IFACE] [--p2p-port PORT] [--metrics-port PORT] [--ssh-port PORT] [--yes]
+Usage: $(basename "$0") [--tailscale-if IFACE] [--p2p-port PORT] [--metrics-port PORT] [--node-exporter-port PORT] [--ssh-port PORT] [--yes]
 
 Options:
   --tailscale-if IFACE  Tailscale interface name (default: auto-detect tailscale0/ts0)
   --p2p-port PORT       P2P port to allow on tailscale (default: 26656)
   --metrics-port PORT   Prometheus /metrics port to allow on tailscale (default: 26660)
+  --node-exporter-port PORT
+                        node_exporter port to allow on tailscale (default: 9100)
   --ssh-port PORT       SSH port to allow on tailscale (default: 22)
   --yes                 Do not prompt for confirmation (non-interactive)
   -h, --help            Show this help and exit.
@@ -49,6 +52,7 @@ TAIL_IF=""
 P2P_PORT=26656
 METRICS_PORT=26660
 SSH_PORT=22
+NODE_EXPORTER_PORT=9100
 ASSUME_YES=0
 
 while [[ $# -gt 0 ]]; do
@@ -64,6 +68,10 @@ while [[ $# -gt 0 ]]; do
     --metrics-port)
       [[ $# -ge 2 ]] || { echo "Missing value for --metrics-port"; usage; exit 1; }
       METRICS_PORT="$2"; shift
+      ;;
+    --node-exporter-port)
+      [[ $# -ge 2 ]] || { echo "Missing value for --node-exporter-port"; usage; exit 1; }
+      NODE_EXPORTER_PORT="$2"; shift
       ;;
     --ssh-port)
       [[ $# -ge 2 ]] || { echo "Missing value for --ssh-port"; usage; exit 1; }
@@ -100,6 +108,7 @@ echo "Tailscale interface : $TAIL_IF"
 echo "P2P port            : $P2P_PORT"
 echo "Metrics port        : $METRICS_PORT"
 echo "SSH port            : $SSH_PORT"
+echo "node_exporter port  : $NODE_EXPORTER_PORT"
 echo
 echo "Planned rules (IPv4 + IPv6):"
 echo "  - Default INPUT/FORWARD DROP, OUTPUT ACCEPT"
@@ -108,6 +117,7 @@ echo "  - Allow loopback (lo)"
 echo "  - Allow SSH on $TAIL_IF:$SSH_PORT"
 echo "  - Allow P2P on $TAIL_IF:$P2P_PORT"
 echo "  - Allow Prometheus on $TAIL_IF:$METRICS_PORT"
+echo "  - Allow node_exporter on $TAIL_IF:$NODE_EXPORTER_PORT"
 echo
 
 if [[ "$ASSUME_YES" -ne 1 ]]; then
@@ -143,9 +153,10 @@ iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 # Allow SSH on tailscale
 iptables -A INPUT -i "$TAIL_IF" -p tcp --dport "$SSH_PORT" -j ACCEPT
 
-# Allow P2P + metrics on tailscale
+# Allow P2P + metrics + node_exporter on tailscale
 iptables -A INPUT -i "$TAIL_IF" -p tcp --dport "$P2P_PORT" -j ACCEPT
 iptables -A INPUT -i "$TAIL_IF" -p tcp --dport "$METRICS_PORT" -j ACCEPT
+iptables -A INPUT -i "$TAIL_IF" -p tcp --dport "$NODE_EXPORTER_PORT" -j ACCEPT
 
 echo "Applying IPv6 rules..."
 
@@ -161,6 +172,7 @@ ip6tables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 ip6tables -A INPUT -i "$TAIL_IF" -p tcp --dport "$SSH_PORT" -j ACCEPT
 ip6tables -A INPUT -i "$TAIL_IF" -p tcp --dport "$P2P_PORT" -j ACCEPT
 ip6tables -A INPUT -i "$TAIL_IF" -p tcp --dport "$METRICS_PORT" -j ACCEPT
+ip6tables -A INPUT -i "$TAIL_IF" -p tcp --dport "$NODE_EXPORTER_PORT" -j ACCEPT
 
 echo "✔ Firewall rules applied."
 echo "Backups:"
@@ -169,4 +181,3 @@ echo "  /root/ip6tables-backup-${BACKUP_DATE}.v6"
 echo
 echo "Note: To persist these rules across reboots, install a persistence"
 echo "      mechanism (e.g. 'iptables-persistent' on Ubuntu) and save them."
-
