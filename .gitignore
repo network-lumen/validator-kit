@@ -4,7 +4,6 @@
 .env
 headscale/.env
 monitoring/.env
-lab/.env
 
 # Headscale auth keys and TLS certs
 headscale/headscale_keys_*.txt

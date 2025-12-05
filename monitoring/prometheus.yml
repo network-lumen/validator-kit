@@ -15,4 +15,7 @@ scrape_configs:
     static_configs:
       - targets:
           - "100.64.0.1:26660"
-
+  - job_name: "lumen-node"
+    static_configs:
+      - targets:
+          - "100.64.0.1:9100"

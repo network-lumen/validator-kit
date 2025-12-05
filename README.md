@@ -250,17 +250,3 @@ This exposes Grafana with:
 
 - login protection (Grafana admin user/password)
 - IP whitelisting at the Nginx proxy layer
-
-### 5. Experimental sentry rotation
-
-For advanced setups, there is an experimental helper:
-
-- `scripts/network/sentry_rotation.sh`
-
-It expects two sentry services (e.g. `lumen-sentry-a` and `lumen-sentry-b`)
-reachable via systemd from the same host, plus their RPC URLs. It monitors the
-active sentry's peer count and, when it crosses a threshold, wakes the sleeping
-one, waits for it to catch up, then stops the overloaded one and swaps roles.
-
-By default it runs in dry-run mode and only prints what it would do. Pass
-`--apply` to actually start/stop services.
