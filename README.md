@@ -86,7 +86,6 @@ Before bootstrapping anything, you can tune the templates in `config/`:
 - `config/fullnode/*.toml` – same for sentries / fullnodes
 - `config/seeds.txt` – optional seed nodes (one `node_id@host:port` per line)
 - `config/peers.txt` – persistent peers you trust (validator ↔ sentries, etc.)
-- `config/sentries.txt` – public sentry addresses you may want to expose to others
 
 These files are copied as-is into each node home by the scripts, so they become
 the “source of truth” you keep under Git.

@@ -89,4 +89,3 @@ echo "  $KEYS_FILE"
 echo
 echo "Example usage on a node with Tailscale client installed:"
 echo "  sudo tailscale up --login-server http://127.0.0.1:8080 --authkey <one-of-the-keys>"
-

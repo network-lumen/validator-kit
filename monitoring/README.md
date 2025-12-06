@@ -24,16 +24,8 @@ This will:
 
 ## Alerting
 
-- Prometheus loads rules from `alerts.yml` which contains:
-  - basic alerts for:
-    - validator down (`ValidatorDown`)
-    - validator lagging behind head (`ValidatorBehindHead`) – adjust metric
-      names and thresholds to match your chain
-  - optional host alerts (CPU) assuming you run `node_exporter`
-- Alertmanager:
-  - included as the `alertmanager` service in `docker-compose.yml`
-  - configured via `alertmanager.yml`
-  - email / chat integrations are left as placeholders for you to fill in
+- This stack does not ship any preconfigured alert rules or external alerting targets.
+- Configure alerts yourself in Prometheus/Grafana (for example via the UI) based on your own needs and metrics.
 
 ## Security notes
 

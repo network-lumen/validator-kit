@@ -33,3 +33,4 @@ if [[ -f ".env" ]]; then
 else
   echo "Default control URL: http://127.0.0.1:8080"
 fi
+

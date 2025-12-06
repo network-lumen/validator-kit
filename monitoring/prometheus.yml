@@ -1,9 +1,6 @@
 global:
   scrape_interval: 15s
 
-rule_files:
-  - "alerts.yml"
-
 scrape_configs:
   # Validator metrics over Headscale/Tailscale
   #

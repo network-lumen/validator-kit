@@ -17,3 +17,4 @@ fi
 
 echo "Stopping Headscale (docker-compose) from $HEADSCALE_DIR"
 "${COMPOSE_CMD[@]}" down
+
