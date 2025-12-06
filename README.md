@@ -62,6 +62,16 @@ and operators have a small set of simple, repeatable commands.
    a node's `config.toml` by querying a trusted RPC server for the latest
    height and computing an appropriate trust height/hash, so new sentries
    can bootstrap quickly without replaying all historical blocks.
+ - `scripts/network/lockdown_sentry_firewall.sh` applies a strict
+   iptables/ip6tables firewall profile on a sentry/fullnode host. It sets
+   default DROP policies and only allows:
+   - SSH over the Tailscale interface
+   - P2P (26656) from the public Internet
+   - Prometheus (26660) and Grafana (3000) over the Tailscale interface
+   Note: because this script flushes existing iptables rules, on hosts
+   where Docker is already running you should restart Docker and then any
+   docker-compose stacks (monitoring/headscale, etc.) afterward so that
+   Docker can recreate its own iptables chains and published ports.
  - `scripts/network/lockdown_validator_firewall.sh` applies a strict
    iptables/ip6tables firewall profile on the validator host: only SSH,
    P2P (26656), Prometheus (26660) and (optionally) node_exporter (9100)

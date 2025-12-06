@@ -17,6 +17,17 @@ set -euo pipefail
 # After running this once, the sentry should:
 #   - be reachable publicly only on its P2P port
 #   - expose metrics + Grafana only over Headscale/Tailscale
+#
+# WARNING (Docker):
+#   - This script flushes and recreates INPUT/FORWARD chains for iptables/ip6tables.
+#   - On hosts where Docker is already running, this also removes Docker's own
+#     filter chains (e.g. the DOCKER chain used for published ports).
+#   - After applying this script on a host with running containers, you should:
+#       * restart Docker:   systemctl restart docker
+#       * then restart any docker-compose stacks (e.g. Prometheus/Grafana).
+#   - Otherwise container port publishing (e.g. Grafana on 3000, Prometheus on
+#     9091) may fail with errors like "iptables: No chain/target/match by that name"
+#     and services will not be reachable even if they are running.
 ############################################################
 
 usage() {
@@ -178,3 +189,10 @@ echo
 echo "Note: Grafana and Prometheus are now only reachable over Tailscale."
 echo "      To persist these rules across reboots, save them with an"
 echo "      iptables persistence tool on your distribution."
+echo
+echo "If this host runs Docker services (e.g. monitoring/headscale),"
+echo "you should restart Docker and then your docker-compose stacks so"
+echo "that Docker can recreate its iptables chains and published ports:"
+echo "  systemctl restart docker"
+echo "  # then in each stack directory (e.g. deploy/monitoring):"
+echo "  docker-compose down && docker-compose up -d"
