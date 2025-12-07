@@ -20,12 +20,13 @@ and operators have a small set of simple, repeatable commands.
   - `fullnode/` – template configs for a fullnode / sentry
   - `genesis.json`, `seeds.txt`, `peers.txt`, `sentries.txt`
 - `scripts/`
-  - `scripts/network/bootstrap.sh` – bootstrap a new single-validator chain
+- `scripts/network/bootstrap.sh` – bootstrap a new single-validator chain
     (validator + initial genesis) from the repo config
   - `scripts/network/join.sh` – join the network as a fullnode/sentry
   - other helper scripts (staking, services, snapshots)
 - `headscale/` – local Headscale control-plane (see its README)
 - `monitoring/` – Prometheus + Grafana stack (see its README)
+  - `config/rpc/` – templates for a non-validator RPC/API node (public fullnode)
 
 ## Keys, backups and snapshots (overview)
 
@@ -133,6 +134,7 @@ Before bootstrapping anything, you can tune the templates in `config/`:
 
 - `config/validator/*.toml` – ports, logging, pruning and Prometheus for the validator
 - `config/fullnode/*.toml` – same for sentries / fullnodes
+- `config/rpc/*.toml` – RPC/API node (full node exposing 26657/1317/9090)
 - `config/seeds.txt` – optional seed nodes (one `node_id@host:port` per line)
 - `config/peers.txt` – persistent peers you trust (validator ↔ sentries, etc.)
 

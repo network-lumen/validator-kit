@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ###############################################
-# Lumen — Join an existing network (full/sentry)
+# Lumen — Join an existing network (full/sentry/RPC)
 # Fully offline — config & genesis come from repo
 # Seeds/persistent peers taken from config/*.txt
 ###############################################
@@ -10,7 +10,7 @@ set -euo pipefail
 # --- Arguments ---------------------------------------------------------------
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: join.sh <moniker> [--import-validator dir] [--pqc-backup dir]"
+  echo "Usage: join.sh <moniker> [--public-api] [--import-validator dir] [--pqc-backup dir]"
   exit 1
 fi
 
@@ -24,9 +24,11 @@ IMPORT_VALIDATOR=""
 PQC_BACKUP=""
 BACKUP_DIR=""
 FORCE=0
+PUBLIC_API=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --public-api)      PUBLIC_API=1 ;;
     --import-validator) IMPORT_VALIDATOR="$2"; shift ;;
     --pqc-backup)       PQC_BACKUP="$2"; shift ;;
     --backup-dir)       BACKUP_DIR="$2"; shift ;;
@@ -49,6 +51,7 @@ GENESIS_SRC="$REPO_ROOT/config/genesis.json"
 SEEDS_FILE="$REPO_ROOT/config/seeds.txt"
 PEERS_FILE="$REPO_ROOT/config/peers.txt"
 CFG_FULL="$REPO_ROOT/config/fullnode"
+CFG_RPC="$REPO_ROOT/config/rpc"
 
 # -----------------------------------------------------------------------------
 # Check binaries (local)
@@ -99,9 +102,19 @@ echo "[1/7] Init home: $HOME_DIR"
 # -----------------------------------------------------------------------------
 
 echo "[2/7] Installing config"
-cp "$CFG_FULL/app.toml"    "$HOME_DIR/config/app.toml"
-cp "$CFG_FULL/client.toml" "$HOME_DIR/config/client.toml"
-cp "$CFG_FULL/config.toml" "$HOME_DIR/config/config.toml"
+CFG_SRC="$CFG_FULL"
+if [[ "$PUBLIC_API" -eq 1 ]]; then
+  if [[ ! -d "$CFG_RPC" ]]; then
+    echo "❌ --public-api requested but $CFG_RPC is missing" >&2
+    exit 1
+  fi
+  echo "→ Using RPC/API profile from config/rpc"
+  CFG_SRC="$CFG_RPC"
+fi
+
+cp "$CFG_SRC/app.toml"    "$HOME_DIR/config/app.toml"
+cp "$CFG_SRC/client.toml" "$HOME_DIR/config/client.toml"
+cp "$CFG_SRC/config.toml" "$HOME_DIR/config/config.toml"
 
 sed -i "s|^seeds *=.*|seeds = \"$SEEDS\"|" "$HOME_DIR/config/config.toml"
 sed -i "s|^persistent_peers *=.*|persistent_peers = \"$PEERS\"|" "$HOME_DIR/config/config.toml"

@@ -1,0 +1,9 @@
+# Client config for an RPC / API node.
+
+chain-id = "lumen"
+keyring-backend = "os"
+keyring-default-keyname = ""
+output = "text"
+node = "tcp://localhost:26657"
+broadcast-mode = "sync"
+

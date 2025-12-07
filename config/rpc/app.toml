@@ -1,0 +1,72 @@
+# RPC / API node template
+# ------------------------
+# This profile is meant for a "public" full node that exposes:
+# - CometBFT RPC on 26657
+# - REST API on 1317
+# - gRPC on 9090
+#
+# It is not a validator and should not hold any consensus or funds-signing keys.
+
+# Base config largely mirrors the fullnode profile.
+minimum-gas-prices = ""
+query-gas-limit = "0"
+pruning = "custom"
+pruning-keep-recent = "1000"
+pruning-interval = "100"
+halt-height = 0
+halt-time = 0
+min-retain-blocks = 0
+inter-block-cache = true
+index-events = []
+iavl-cache-size = 100000
+iavl-disable-fastnode = false
+app-db-backend = ""
+
+[telemetry]
+service-name = ""
+enabled = true
+enable-hostname = false
+enable-hostname-label = false
+enable-service-label = false
+prometheus-retention-time = 0
+global-labels = []
+metrics-sink = "prometheus"
+statsd-addr = ""
+datadog-hostname = ""
+
+[api]
+enable = true
+swagger = true
+# Bind on all interfaces so external apps can reach it.
+address = "tcp://0.0.0.0:1317"
+max-open-connections = 1000
+rpc-read-timeout = 10
+rpc-write-timeout = 0
+rpc-max-body-bytes = 1000000
+# Keep CORS disabled by default; put a reverse proxy in front if you need browser access.
+enabled-unsafe-cors = false
+
+[grpc]
+enable = true
+address = "0.0.0.0:9090"
+max-recv-msg-size = "10485760"
+max-send-msg-size = "2147483647"
+
+[grpc-web]
+enable = true
+
+[state-sync]
+snapshot-interval = 100
+snapshot-keep-recent = 5
+
+[streaming]
+
+[streaming.abci]
+keys = []
+plugin = ""
+stop-node-on-err = true
+
+[mempool]
+# Allow transactions in the mempool for public RPC nodes.
+max-txs = 0
+
