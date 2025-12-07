@@ -14,7 +14,7 @@ and operators have a small set of simple, repeatable commands.
 
 ## Layout
 
-- `bin/` – `lumend` binary used by the helper scripts
+- `bin/` – `lumend` binary used by the helper scripts (ignored by Git; see below for how to download it)
 - `config/`
   - `validator/` – template configs for a validator
   - `fullnode/` – template configs for a fullnode / sentry
@@ -86,6 +86,45 @@ and operators have a small set of simple, repeatable commands.
    metrics (CPU, RAM, disk, etc.) on `127.0.0.1:9100` by default. Run it
    as root on validator / sentry machines if you want the full hardware
    section of the Grafana dashboard.
+
+
+## Getting the `lumend` binary
+
+All scripts under `deploy/scripts/` assume that a `lumend` binary is either:
+
+- available on `PATH`, or
+- present as `deploy/bin/lumend` (preferred for validator-kit setups).
+
+The `bin/lumend` file is **not** committed to Git. To fetch the canonical
+binary for the current mainnet release, run from the repo root:
+
+```bash
+cd deploy
+./scripts/install/download_lumend.sh
+```
+
+By default this downloads the `linux-amd64` tarball for `v1.3.0` from:
+
+- `https://github.com/network-lumen/blockchain/releases/tag/v1.3.0`
+
+and extracts `lumend` into `deploy/bin/lumend`.
+
+You can override the source or target via env vars:
+
+- `LUMEN_RELEASE_TAG` – release tag to use (default: `v1.3.0`)
+- `LUMEN_RELEASE_URL` – full URL to a tarball (takes precedence over the tag)
+- `LUMEN_TARGET` – output path for the binary (default: `deploy/bin/lumend`)
+
+Example:
+
+```bash
+LUMEN_RELEASE_TAG=v1.3.0 \
+LUMEN_TARGET=/usr/local/bin/lumend \
+./scripts/install/download_lumend.sh
+```
+
+Once the binary is in place, you can run the normal bootstrap/join scripts
+and systemd installers without having to manage the `lumend` path manually.
 
 
 ## Configure your topology

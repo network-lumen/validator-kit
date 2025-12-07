@@ -12,3 +12,5 @@ headscale/proxy/certs/
 # Headscale state backups
 headscale/backups/
 
+# Local Lumen binary used by helper scripts
+bin/lumend
