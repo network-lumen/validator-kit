@@ -73,6 +73,11 @@ and operators have a small set of simple, repeatable commands.
    where Docker is already running you should restart Docker and then any
    docker-compose stacks (monitoring/headscale, etc.) afterward so that
    Docker can recreate its own iptables chains and published ports.
+ - `scripts/network/lockdown_rpc_firewall.sh` applies a strict
+   iptables/ip6tables firewall profile on a dedicated RPC/API fullnode host:
+   only SSH over Tailscale, P2P (26656), RPC (26657), REST API (1317) and
+   gRPC (9090) from the public Internet are allowed in by default, with an
+   optional metrics port over Tailscale; everything else is dropped.
  - `scripts/network/lockdown_validator_firewall.sh` applies a strict
    iptables/ip6tables firewall profile on the validator host: only SSH,
    P2P (26656), Prometheus (26660) and (optionally) node_exporter (9100)
