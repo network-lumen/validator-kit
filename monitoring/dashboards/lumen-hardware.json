@@ -371,7 +371,7 @@
         {
           "datasource": "Prometheus",
           "exemplar": true,
-          "expr": "100 - (node_filesystem_free_bytes{instance=~\"$instance\", device=\"/dev/sda2\"} *100 / node_filesystem_size_bytes{instance=~\"$instance\", device=\"/dev/sda2\"})",
+          "expr": "100 - (node_filesystem_free_bytes{instance=~\"$instance\", mountpoint=\"/\", fstype=~\"ext4|xfs\"} *100 / node_filesystem_size_bytes{instance=~\"$instance\", mountpoint=\"/\", fstype=~\"ext4|xfs\"})",
           "hide": false,
           "instant": false,
           "interval": "",
@@ -381,7 +381,7 @@
         {
           "datasource": "Prometheus",
           "exemplar": true,
-          "expr": "100 - (node_filesystem_free_bytes{instance=~\"$instance\", device=\"/dev/sda1\"} *100 / node_filesystem_size_bytes{instance=~\"$instance\", device=\"/dev/sda1\"})",
+          "expr": "100 - (node_filesystem_free_bytes{instance=~\"$instance\", mountpoint=\"/boot\", fstype=~\"ext4|xfs\"} *100 / node_filesystem_size_bytes{instance=~\"$instance\", mountpoint=\"/boot\", fstype=~\"ext4|xfs\"})",
           "hide": false,
           "interval": "",
           "legendFormat": "Boot",
@@ -1744,11 +1744,8 @@
         "sort": 0,
         "type": "query"
       },
-    {
-      "current": {
-        "text": "100.64.0.1:9100",
-        "value": "100.64.0.1:9100"
-      },
+      {
+      "current": {},
         "datasource": "Prometheus",
         "definition": "label_values(node_memory_MemTotal_bytes, instance)",
         "hide": 2,
