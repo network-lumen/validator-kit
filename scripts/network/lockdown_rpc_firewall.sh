@@ -13,12 +13,14 @@ set -euo pipefail
 #   - allows P2P (26656) from the public Internet
 #   - allows CometBFT RPC (26657), REST API (1317) and gRPC (9090)
 #     from the public Internet
-#   - optionally allows Prometheus metrics (26660) only on Tailscale
+#   - optionally allows lumend metrics (26660) and node_exporter (9100)
+#     over Tailscale and from a local Docker bridge (for Prometheus)
 #   - leaves OUTPUT fully open
 #
 # After running this once, the RPC node should:
 #   - be reachable publicly only on its P2P + RPC/API/gRPC ports
-#   - expose metrics only over Headscale/Tailscale (if enabled)
+#   - expose metrics only over Headscale/Tailscale and from local Docker
+#     containers (if enabled)
 #
 # WARNING (Docker):
 #   - This script flushes and recreates INPUT/FORWARD chains for iptables/ip6tables.
@@ -31,15 +33,18 @@ set -euo pipefail
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--tailscale-if IFACE] [--p2p-port PORT] [--rpc-port PORT] [--api-port PORT] [--grpc-port PORT] [--metrics-port PORT] [--ssh-port PORT] [--yes]
+Usage: $(basename "$0") [--tailscale-if IFACE] [--docker-if IFACE] [--p2p-port PORT] [--rpc-port PORT] [--api-port PORT] [--grpc-port PORT] [--metrics-port PORT] [--node-exporter-port PORT] [--ssh-port PORT] [--yes]
 
 Options:
   --tailscale-if IFACE  Tailscale interface name (default: auto-detect tailscale0/ts0)
+  --docker-if IFACE     Docker bridge interface (default: auto-detect docker0/br-*)
   --p2p-port PORT       P2P port to allow from Internet (default: 26656)
   --rpc-port PORT       CometBFT RPC port to allow from Internet (default: 26657)
   --api-port PORT       REST API port to allow from Internet (default: 1317)
   --grpc-port PORT      gRPC port to allow from Internet (default: 9090)
-  --metrics-port PORT   Prometheus /metrics port to allow on Tailscale (default: 26660, 0 = disabled)
+  --metrics-port PORT   lumend Prometheus /metrics port (default: 26660, 0 = disabled)
+  --node-exporter-port PORT
+                        node_exporter metrics port (default: 9100, 0 = disabled)
   --ssh-port PORT       SSH port to allow on Tailscale (default: 22)
   --yes                 Do not prompt for confirmation (non-interactive)
   -h, --help            Show this help and exit.
@@ -56,11 +61,13 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 TAIL_IF=""
+DOCKER_IF=""
 P2P_PORT=26656
 RPC_PORT=26657
 API_PORT=1317
 GRPC_PORT=9090
 METRICS_PORT=26660
+NODE_EXPORTER_PORT=9100
 SSH_PORT=22
 ASSUME_YES=0
 
@@ -69,6 +76,10 @@ while [[ $# -gt 0 ]]; do
     --tailscale-if)
       [[ $# -ge 2 ]] || { echo "Missing value for --tailscale-if"; usage; exit 1; }
       TAIL_IF="$2"; shift
+      ;;
+    --docker-if)
+      [[ $# -ge 2 ]] || { echo "Missing value for --docker-if"; usage; exit 1; }
+      DOCKER_IF="$2"; shift
       ;;
     --p2p-port)
       [[ $# -ge 2 ]] || { echo "Missing value for --p2p-port"; usage; exit 1; }
@@ -89,6 +100,10 @@ while [[ $# -gt 0 ]]; do
     --metrics-port)
       [[ $# -ge 2 ]] || { echo "Missing value for --metrics-port"; usage; exit 1; }
       METRICS_PORT="$2"; shift
+      ;;
+    --node-exporter-port)
+      [[ $# -ge 2 ]] || { echo "Missing value for --node-exporter-port"; usage; exit 1; }
+      NODE_EXPORTER_PORT="$2"; shift
       ;;
     --ssh-port)
       [[ $# -ge 2 ]] || { echo "Missing value for --ssh-port"; usage; exit 1; }
@@ -120,8 +135,21 @@ if [[ -z "$TAIL_IF" ]]; then
   exit 1
 fi
 
+if [[ -z "$DOCKER_IF" ]]; then
+  # Prefer docker0, fall back to first br-* interface if present.
+  DOCKER_IF="$(ip -o link show | awk -F': ' '/ docker0@| docker0:/ {print $2; exit}')"
+  if [[ -z "$DOCKER_IF" ]]; then
+    DOCKER_IF="$(ip -o link show | awk -F': ' '/ br-[0-9a-f]{12}@| br-[0-9a-f]{12}:/ {print $2; exit}')"
+  fi
+fi
+
 echo "=== Lumen RPC/API node firewall lockdown ==="
 echo "Tailscale interface : $TAIL_IF"
+if [[ -n "$DOCKER_IF" ]]; then
+  echo "Docker bridge       : $DOCKER_IF"
+else
+  echo "Docker bridge       : (none detected)"
+fi
 echo "P2P port (public)   : $P2P_PORT"
 echo "RPC port (public)   : $RPC_PORT"
 echo "API port (public)   : $API_PORT"
@@ -130,6 +158,11 @@ if [[ "$METRICS_PORT" -ne 0 ]]; then
   echo "Metrics port (ts)   : $METRICS_PORT"
 else
   echo "Metrics port (ts)   : disabled"
+fi
+if [[ "$NODE_EXPORTER_PORT" -ne 0 ]]; then
+  echo "node_exporter port  : $NODE_EXPORTER_PORT"
+else
+  echo "node_exporter port  : disabled"
 fi
 echo "SSH port (ts)       : $SSH_PORT"
 echo
@@ -143,7 +176,18 @@ echo "  - Allow CometBFT RPC on all interfaces (port $RPC_PORT)"
 echo "  - Allow REST API on all interfaces (port $API_PORT)"
 echo "  - Allow gRPC on all interfaces (port $GRPC_PORT)"
 if [[ "$METRICS_PORT" -ne 0 ]]; then
-  echo "  - Allow Prometheus metrics on $TAIL_IF:$METRICS_PORT"
+  if [[ -n "$DOCKER_IF" ]]; then
+    echo "  - Allow lumend metrics on $TAIL_IF:$METRICS_PORT and $DOCKER_IF:$METRICS_PORT"
+  else
+    echo "  - Allow lumend metrics on $TAIL_IF:$METRICS_PORT"
+  fi
+fi
+if [[ "$NODE_EXPORTER_PORT" -ne 0 ]]; then
+  if [[ -n "$DOCKER_IF" ]]; then
+    echo "  - Allow node_exporter metrics on $TAIL_IF:$NODE_EXPORTER_PORT and $DOCKER_IF:$NODE_EXPORTER_PORT"
+  else
+    echo "  - Allow node_exporter metrics on $TAIL_IF:$NODE_EXPORTER_PORT"
+  fi
 fi
 echo
 
@@ -188,6 +232,17 @@ iptables -A INPUT -p tcp --dport "$GRPC_PORT" -j ACCEPT
 # Metrics only over Tailscale (optional)
 if [[ "$METRICS_PORT" -ne 0 ]]; then
   iptables -A INPUT -i "$TAIL_IF" -p tcp --dport "$METRICS_PORT" -j ACCEPT
+  if [[ -n "$DOCKER_IF" ]]; then
+    iptables -A INPUT -i "$DOCKER_IF" -p tcp --dport "$METRICS_PORT" -j ACCEPT
+  fi
+fi
+
+# node_exporter metrics (optional)
+if [[ "$NODE_EXPORTER_PORT" -ne 0 ]]; then
+  iptables -A INPUT -i "$TAIL_IF" -p tcp --dport "$NODE_EXPORTER_PORT" -j ACCEPT
+  if [[ -n "$DOCKER_IF" ]]; then
+    iptables -A INPUT -i "$DOCKER_IF" -p tcp --dport "$NODE_EXPORTER_PORT" -j ACCEPT
+  fi
 fi
 
 echo "Applying IPv6 rules..."
@@ -206,9 +261,18 @@ ip6tables -A INPUT -p tcp --dport "$P2P_PORT" -j ACCEPT
 ip6tables -A INPUT -p tcp --dport "$RPC_PORT" -j ACCEPT
 ip6tables -A INPUT -p tcp --dport "$API_PORT" -j ACCEPT
 ip6tables -A INPUT -p tcp --dport "$GRPC_PORT" -j ACCEPT
-
 if [[ "$METRICS_PORT" -ne 0 ]]; then
   ip6tables -A INPUT -i "$TAIL_IF" -p tcp --dport "$METRICS_PORT" -j ACCEPT
+  if [[ -n "$DOCKER_IF" ]]; then
+    ip6tables -A INPUT -i "$DOCKER_IF" -p tcp --dport "$METRICS_PORT" -j ACCEPT
+  fi
+fi
+
+if [[ "$NODE_EXPORTER_PORT" -ne 0 ]]; then
+  ip6tables -A INPUT -i "$TAIL_IF" -p tcp --dport "$NODE_EXPORTER_PORT" -j ACCEPT
+  if [[ -n "$DOCKER_IF" ]]; then
+    ip6tables -A INPUT -i "$DOCKER_IF" -p tcp --dport "$NODE_EXPORTER_PORT" -j ACCEPT
+  fi
 fi
 
 echo "✔ RPC/API node firewall rules applied."
@@ -226,4 +290,3 @@ echo "published ports:"
 echo "  systemctl restart docker"
 echo "  # then in each stack directory:"
 echo "  docker-compose down && docker-compose up -d"
-
