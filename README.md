@@ -98,16 +98,16 @@ and operators have a small set of simple, repeatable commands.
 
 ## Getting the `lumend` binary
 
-All scripts under `deploy/scripts/` assume that a `lumend` binary is either:
+All scripts under `validator-kit/scripts/` assume that a `lumend` binary is either:
 
 - available on `PATH`, or
-- present as `deploy/bin/lumend` (preferred for validator-kit setups).
+- present as `validator-kit/bin/lumend` (preferred for validator-kit setups).
 
 The `bin/lumend` file is **not** committed to Git. To fetch the canonical
 binary for the current mainnet release, run from the repo root:
 
 ```bash
-cd deploy
+cd validator-kit
 ./scripts/install/download_lumend.sh
 ```
 
@@ -115,13 +115,13 @@ By default this downloads the `linux-amd64` tarball for `v1.3.0` from:
 
 - `https://github.com/network-lumen/blockchain/releases/tag/v1.3.0`
 
-and extracts `lumend` into `deploy/bin/lumend`.
+and extracts `lumend` into `validator-kit/bin/lumend`.
 
 You can override the source or target via env vars:
 
 - `LUMEN_RELEASE_TAG` – release tag to use (default: `v1.3.0`)
 - `LUMEN_RELEASE_URL` – full URL to a tarball (takes precedence over the tag)
-- `LUMEN_TARGET` – output path for the binary (default: `deploy/bin/lumend`)
+- `LUMEN_TARGET` – output path for the binary (default: `validator-kit/bin/lumend`)
 
 Example:
 
