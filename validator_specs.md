@@ -1,5 +1,4 @@
-Purpose
-Provide clear, minimal expectations for validators and sentry operators joining the Lumen network.
+This document provide clear, minimal expectations for validators and sentry operators joining the Lumen network.
 No over-engineering required — stability and correctness first.
 
 ────────────────────────────
