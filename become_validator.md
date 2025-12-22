@@ -1,4 +1,4 @@
-This thread describes the high-level process.
+This document describes the high-level process.
 Technical setup details are covered in the validator kit README.
 
 ────────────────────────────
