@@ -50,5 +50,6 @@ The founders stake is not intended to remain dominant.
 - Founders act only as protocol contributors
 
 **Key takeaway**
+
 This is a transitional bootstrap model, not a permanent control mechanism.
 No validator is economically locked in, and all dynamics follow normal staking rules.
