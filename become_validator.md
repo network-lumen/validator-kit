@@ -4,6 +4,7 @@ Technical setup details are covered in the validator kit README.
 ────────────────────────────
 
 **:one: Review requirements**
+
 Before applying, make sure you meet the baseline infrastructure expectations:
 - validator & sentry specs
 - security model
