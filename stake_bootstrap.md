@@ -21,6 +21,7 @@ There is no discretionary slashing and no validator-specific punishment.
 ───────────
 
 **Decentralization roadmap**
+
 The founders stake is not intended to remain dominant.
 
 **Phase 1 — Bootstrap**
