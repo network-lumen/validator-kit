@@ -26,12 +26,15 @@ No over-engineering required — stability and correctness first.
 - CPU: 2–4 cores
 - RAM: 8–16 GB
 - Storage: SSD ≥ 500 GB
+
 **Network:**
 - Public IP
 - Open Tendermint P2P port (26656)
+
 **Role:**
 - Accept inbound peers
 - Forward traffic to the validator
+
 **Notes**
 *2 sentries per validator recommended (geo-separated if possible)*
 *Validators may operate their own sentries or outsource them*
