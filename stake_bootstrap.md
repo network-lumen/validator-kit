@@ -1,4 +1,4 @@
-This thread explains how validator voting power works today and how it is expected to evolve.
+This document explains how validator voting power works today and how it is expected to evolve.
 
 ───────────
 
