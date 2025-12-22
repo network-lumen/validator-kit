@@ -8,10 +8,12 @@ No over-engineering required — stability and correctness first.
 - RAM: 16–32 GB
 - Storage: NVMe SSD ≥ 1 TB
 - OS: Linux (Ubuntu 22.04 LTS or equivalent)
+
 **Network:**
 - Stable connection
 - Public exposure only via sentries
 - Uptime target: ≥ 99%
+
 **Security**
 - **Validator must not be publicly reachable**
 - **Only sentry IPs allowed (firewall enforced)**
