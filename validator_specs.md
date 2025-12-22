@@ -46,6 +46,7 @@ No over-engineering required — stability and correctness first.
 **Validator:**
 :x: No public P2P
 :white_check_mark: Accept traffic only from own sentries
+
 **Sentries:**
 :x: Never expose validator RPC
 :white_check_mark: P2P only
