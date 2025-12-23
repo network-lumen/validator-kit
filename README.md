@@ -12,6 +12,38 @@ and operators have a small set of simple, repeatable commands.
 
 > All commands in this README assume you are inside the `validator-kit/` directory:
 
+## Node lifecycle overview (important)
+
+Lumen nodes follow a simple, Cosmos‑canonical lifecycle built around two high-level entrypoints:
+
+- `scripts/init_chain.sh <moniker> [--home DIR]` – create a *new* network and its initial validator at block 0.
+  - Wraps `scripts/network/bootstrap.sh` and uses `config/validator/*.toml` + `config/genesis.json`.
+  - Creates a local bootstrap backup at `<home>/first-node.bak` (mnemonic, consensus key, PQC keys, genesis, metadata).
+  - Refuses to run if the resolved home already exists, so you cannot accidentally clobber an existing validator home.
+  - Never configures state sync and never uses `peers.txt`; this node is the *origin* of the chain.
+  - This script is intended for network maintainers and should be used exactly once per network.
+- `scripts/init_node.sh <moniker> [--home DIR] [--rpc http://trusted:26657] [--public-api]` – join an *existing* network as a fullnode / sentry / RPC node.
+  - Wraps `scripts/network/join.sh` (and optionally `scripts/network/state_sync.sh`) using `config/fullnode` or `config/rpc`.
+  - Creates a local backup at `<home>/join-node.bak`, enables state sync against a trusted RPC endpoint, and only then installs and starts a `lumend` systemd service.
+  - Enforces the order **join → state sync → first start** so the node does not start before state sync is configured.
+  - Automatically configures state sync by default; advanced operators can adjust or skip state sync using the lower-level helpers.
+
+For both entrypoints:
+
+- By default the node home is a `.lumen` directory under the operator’s home directory. You can override it either with `LUMEN_HOME=/custom/path` or the `--home DIR` flag (the flag wins if both are set).
+- The internal helper scripts (`bootstrap.sh`, `join.sh`, `state_sync.sh`, `lumend_service.sh`) are still used as‑is; the orchestration layer only adds ordering, safety checks, and clear logs.
+
+> ⚠️ A validator cannot be bootstrapped locally and then “plugged into” an unrelated existing network. Validators are part of consensus state and must either:
+> - exist in genesis (created via `scripts/init_chain.sh` + the initial `genesis.json`), or
+> - be declared on‑chain *after* syncing an existing network (for example, a node started with `scripts/init_node.sh` later runs `tx staking create-validator`).
+
+The general mental model is:
+
+- **init_chain** – one‑time network creation on a maintainer machine.
+- **init_node** – the canonical entrypoint for everyone else; nodes started this way are not validators by default but may later become validators via on‑chain transactions.
+
+There is intentionally **no** script to “init a validator” on an already‑running network. New validators are created by running a regular node with `scripts/init_node.sh`, syncing it, and then submitting an on‑chain `tx staking create-validator` transaction.
+
 ## Layout
 
 - `bin/` – `lumend` binary used by the helper scripts (ignored by Git; see below for how to download it)

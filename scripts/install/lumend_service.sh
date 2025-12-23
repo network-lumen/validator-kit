@@ -48,8 +48,17 @@ else
   DEFAULT_BIN="/usr/local/bin/lumend"
 fi
 
-read -p "Path to lumend binary? (${DEFAULT_BIN}): " BIN_PATH
-BIN_PATH="${BIN_PATH:-$DEFAULT_BIN}"
+# If a preferred binary path is provided via environment, reuse it and
+# avoid prompting the operator a second time. Fallback to the usual
+# interactive prompt only when we cannot resolve a candidate.
+PREFERRED_BIN="${LUMEND_BIN:-${LUMEN_TARGET:-}}"
+if [[ -n "${PREFERRED_BIN}" ]]; then
+  BIN_PATH="${PREFERRED_BIN}"
+  echo "Using lumend binary from environment: ${BIN_PATH}"
+else
+  read -p "Path to lumend binary? (${DEFAULT_BIN}): " BIN_PATH
+  BIN_PATH="${BIN_PATH:-$DEFAULT_BIN}"
+fi
 
 SERVICE_FILE="/etc/systemd/system/lumend.service"
 RPC_LADDR="${RPC_LADDR:-tcp://0.0.0.0:26657}"
@@ -69,22 +78,40 @@ if [ ! -d "${HOME_DIR}" ]; then
 fi
 
 if systemctl list-unit-files | grep -q "^lumend.service"; then
-  if [ "${FORCE}" -eq 1 ]; then
-    echo "Stopping existing lumend.service (force)..."
-    systemctl stop lumend >/dev/null 2>&1 || true
-    systemctl disable lumend >/dev/null 2>&1 || true
-    systemctl reset-failed lumend >/dev/null 2>&1 || true
-    pkill -f "${BIN_PATH} start" >/dev/null 2>&1 || true
-    pkill -f "/root/validator-kit/bin/lumend start" >/dev/null 2>&1 || true
-    pkill -f "lumend start" >/dev/null 2>&1 || true
-    pkill -f "lumend" >/dev/null 2>&1 || true
-    rm -f "${SERVICE_FILE}"
-    rm -f "/etc/systemd/system/multi-user.target.wants/lumend.service"
-    systemctl daemon-reload
-  else
+  if [ "${FORCE}" -eq 0 ]; then
     echo "lumend.service already exists. Use --force to overwrite." >&2
     exit 1
   fi
+
+  CURRENT_STATE="$(systemctl is-active lumend 2>/dev/null || true)"
+  if [[ "${CURRENT_STATE}" == "active" || "${CURRENT_STATE}" == "activating" ]]; then
+    echo "Existing lumend.service is running (state: ${CURRENT_STATE})."
+    echo "Stopping lumend.service gracefully before updating unit..."
+    if ! systemctl stop lumend; then
+      echo "Warning: 'systemctl stop lumend' returned non-zero; checking service state..." >&2
+    fi
+
+    # Wait until the service is no longer active/activating.
+    for _ in $(seq 1 30); do
+      STATE_NOW="$(systemctl is-active lumend 2>/dev/null || true)"
+      if [[ "${STATE_NOW}" != "active" && "${STATE_NOW}" != "activating" ]]; then
+        break
+      fi
+      sleep 1
+    done
+
+    STATE_FINAL="$(systemctl is-active lumend 2>/dev/null || true)"
+    if [[ "${STATE_FINAL}" == "active" || "${STATE_FINAL}" == "activating" ]]; then
+      echo "ERROR: lumend.service did not stop cleanly; aborting." >&2
+      exit 1
+    fi
+    echo "lumend.service is stopped; proceeding with overwrite (--force)."
+  else
+    echo "Existing lumend.service is not running (state: ${CURRENT_STATE:-unknown})."
+    echo "Proceeding with overwrite (--force)."
+  fi
+elif [ "${FORCE}" -eq 1 ]; then
+  echo "No existing lumend.service found; installing new service (--force)."
 fi
 
 cat >/tmp/lumend.service <<EOF
@@ -112,6 +139,6 @@ EOF
 mv /tmp/lumend.service "${SERVICE_FILE}"
 systemctl daemon-reload
 systemctl enable lumend
-systemctl restart lumend
+systemctl start lumend
 
 echo "Service installed at ${SERVICE_FILE} and started. Check with: systemctl status lumend"

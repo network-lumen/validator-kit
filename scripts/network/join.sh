@@ -5,12 +5,20 @@ set -euo pipefail
 # Lumen — Join an existing network (full/sentry/RPC)
 # Fully offline — config & genesis come from repo
 # Seeds/persistent peers taken from config/*.txt
+#
+# Modes:
+#   - node (default, non-validator): runs as a fullnode/sentry/RPC node
+#     with no local consensus key. This is the safe default and matches
+#     Cosmos best practices: joining as a non-validator, then creating
+#     a validator on-chain later if desired.
+#   - validator (--validator): initialize this home with a local
+#     consensus key and priv_validator_state.json so it can sign blocks.
 ###############################################
 
 # --- Arguments ---------------------------------------------------------------
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: join.sh <moniker> [--public-api] [--import-validator dir] [--pqc-backup dir]"
+  echo "Usage: join.sh <moniker> [--public-api] [--validator] [--import-validator dir] [--pqc-backup dir]"
   exit 1
 fi
 
@@ -20,6 +28,7 @@ shift || true
 HOME_DIR="$HOME/.lumen"
 KEYRING="test"
 PQC_NAME="node-pqc"
+MODE="node"   # default: non-validator node
 IMPORT_VALIDATOR=""
 PQC_BACKUP=""
 BACKUP_DIR=""
@@ -29,6 +38,7 @@ PUBLIC_API=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --public-api)      PUBLIC_API=1 ;;
+    --validator)       MODE="validator" ;;
     --import-validator) IMPORT_VALIDATOR="$2"; shift ;;
     --pqc-backup)       PQC_BACKUP="$2"; shift ;;
     --backup-dir)       BACKUP_DIR="$2"; shift ;;
@@ -38,6 +48,8 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+echo "Mode: ${MODE} ($([[ "$MODE" == "validator" ]] && echo "validator" || echo "non-validator"))"
 
 # -----------------------------------------------------------------------------
 # Repo paths
@@ -168,15 +180,26 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# priv_validator_state.json
+# Consensus state / priv_validator_state.json
 # -----------------------------------------------------------------------------
-
-echo "[6/7] Writing priv_validator_state.json"
-
-mkdir -p "$HOME_DIR/data"
-cat >"$HOME_DIR/data/priv_validator_state.json" <<EOF
+if [[ "$MODE" == "validator" ]]; then
+  echo "[6/7] Writing priv_validator_state.json (validator mode)"
+  mkdir -p "$HOME_DIR/data"
+  cat >"$HOME_DIR/data/priv_validator_state.json" <<EOF
 {"height":"0","round":0,"step":0,"signature":null,"signbytes":null,"timestamp":"0001-01-01T00:00:00Z"}
 EOF
+else
+  echo "[6/7] Node mode: removing local consensus key/state (non-validator)"
+
+  if [[ -n "$IMPORT_VALIDATOR" ]]; then
+    echo "ℹ Note: --import-validator was provided but mode is 'node'."
+    echo "  Consensus key material will NOT be used in this home."
+  fi
+
+  # Defensive cleanup: ensure this home cannot accidentally behave as a validator.
+  rm -f "$HOME_DIR/config/priv_validator_key.json" 2>/dev/null || true
+  rm -f "$HOME_DIR/data/priv_validator_state.json" 2>/dev/null || true
+fi
 
 # -----------------------------------------------------------------------------
 # Backup (always, no prompt)
