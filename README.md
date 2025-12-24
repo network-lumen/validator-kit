@@ -22,6 +22,9 @@
 THERE IS NO ADMIN RESET.  
 THERE IS NO FUND RECOVERY.**
 
+**Strongly recommended:** use https://github.com/network-lumen/validator-kit/blob/master/scripts/network/export_backup.sh to generate a lumen_validator_backup_*.tar.gz from ~/.lumen/first-node.bak.
+**Store it OFF the server. Losing it = losing funds.**
+
 ---
 
 This directory contains everything needed to spin up:
