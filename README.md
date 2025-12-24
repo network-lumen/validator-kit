@@ -24,19 +24,6 @@ THERE IS NO FUND RECOVERY.**
 
 ---
 
-## ⚠️ WHAT HAPPENS IF YOU LOSE YOUR PQC KEY?
-
-If your wallet address is linked to a **lost PQC key**:
-- ❌ you CANNOT send tokens
-- ❌ you CANNOT restake
-- ❌ you CANNOT migrate
-- ❌ you CANNOT recover funds
-- ❌ funds are **PERMANENTLY LOCKED**
-- ❌ funds are **NOT redistributed**
-- ❌ funds are **NOT recoverable by governance**
-
-👉 This is **by design**.
-
 This directory contains everything needed to spin up:
 
 - a hardened **validator** node
