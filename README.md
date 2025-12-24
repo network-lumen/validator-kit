@@ -1,8 +1,6 @@
 # Lumen deployment toolbox
 
-# ⚠️⚠️⚠️ CRITICAL VALIDATOR WARNING – READ FIRST ⚠️⚠️⚠️
-
-/!\ /!\ /!\ **THIS IS NOT OPTIONAL** /!\ /!\ /!\
+# ⚠️ CRITICAL VALIDATOR WARNING – READ FIRST ⚠️
 
 ## 🚨 KEY BACKUP REQUIREMENT (ED25519 + PQC)
 
