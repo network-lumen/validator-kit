@@ -60,7 +60,7 @@ There is deliberately **no** “init validator” script on an already-running n
 - `config/` – configuration templates:
   - `validator/` – validator,
   - `fullnode/` – fullnode / sentry,
-  - `genesis.json`, `seeds.txt`, `peers.txt`, `sentries.txt`.
+  - `genesis.json`, `seeds.txt`, `peers.txt`.
 - `ops/` – operator toolbox (scripts, Headscale, monitoring, advanced docs).
 
 For network bootstrap (`init_chain`), snapshots, Headscale, monitoring, or advanced tuning, see `ops/README.md`.
