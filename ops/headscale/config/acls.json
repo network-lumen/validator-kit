@@ -1,0 +1,42 @@
+{
+  "//": [
+    "Headscale ACLs for Lumen.",
+    "",
+    "This is a conservative default that you should adapt to your own",
+    "hostnames and namespaces. It assumes:",
+    "",
+    "- all nodes belong to the `lumen` user/namespace",
+    "- validator nodes are named `validator-*`",
+    "- sentry nodes are named `sentry-*`",
+    "- ops/admin machines are named `ops-*`",
+    "",
+    "See: https://tailscale.com/kb/1018/acls/ for full syntax."
+  ],
+  "groups": {},
+  "acls": [
+    {
+      "//": "Sentries <-> validator on any port (P2P, RPC, metrics, etc).",
+      "action": "accept",
+      "src": [
+        "100.64.0.2/32",
+        "100.64.0.3/32",
+        "100.64.0.1/32"
+      ],
+      "dst": [
+        "100.64.0.1/32:*",
+        "100.64.0.2/32:*",
+        "100.64.0.3/32:*"
+      ]
+    },
+    {
+      "//": "ops-laptop can reach sentries (SSH + Grafana + metrics, etc.), but not the validator.",
+      "action": "accept",
+      "src": ["100.64.0.4/32"],
+      "dst": [
+        "100.64.0.2/32:*",
+        "100.64.0.3/32:*"
+      ]
+    }
+  ]
+
+}
