@@ -77,6 +77,12 @@ if [ ! -d "${HOME_DIR}" ]; then
   exit 1
 fi
 
+CFG_TOML="${HOME_DIR}/config/config.toml"
+IS_SEED_MODE=0
+if [[ -f "${CFG_TOML}" ]] && grep -Eq '^[[:space:]]*seed_mode[[:space:]]*=[[:space:]]*true' "${CFG_TOML}"; then
+  IS_SEED_MODE=1
+fi
+
 if systemctl list-unit-files | grep -q "^lumend.service"; then
   if [ "${FORCE}" -eq 0 ]; then
     echo "lumend.service already exists. Use --force to overwrite." >&2
@@ -114,7 +120,26 @@ elif [ "${FORCE}" -eq 1 ]; then
   echo "No existing lumend.service found; installing new service (--force)."
 fi
 
-cat >/tmp/lumend.service <<EOF
+if [ "${IS_SEED_MODE}" -eq 1 ]; then
+  cat >/tmp/lumend.service <<EOF
+[Unit]
+Description=Lumen node (seed)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=${RUN_USER}
+ExecStart=${BIN_PATH} start --home ${HOME_DIR} \\
+  --p2p.laddr ${P2P_LADDR} \\
+  --minimum-gas-prices 0ulmn
+Restart=on-failure
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+EOF
+else
+  cat >/tmp/lumend.service <<EOF
 [Unit]
 Description=Lumen node
 After=network-online.target
@@ -135,6 +160,7 @@ LimitNOFILE=65535
 [Install]
 WantedBy=multi-user.target
 EOF
+fi
 
 mv /tmp/lumend.service "${SERVICE_FILE}"
 systemctl daemon-reload
