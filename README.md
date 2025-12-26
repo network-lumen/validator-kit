@@ -68,6 +68,7 @@ The general mental model is:
 
 - **init_chain** – one‑time network creation on a maintainer machine.
 - **init_node** – the canonical entrypoint for everyone else; nodes started this way are not validators by default but may later become validators via on‑chain transactions.
+- **init_seed** – optional dedicated seed nodes for bootstrap only (P2P address discovery); these reuse the fullnode templates but run with `seed_mode = true`, no RPC, and the tx indexer disabled.
 
 There is intentionally **no** script to “init a validator” on an already‑running network. New validators are created by running a regular node with `scripts/init_node.sh`, syncing it, and then submitting an on‑chain `tx staking create-validator` transaction.
 
@@ -118,7 +119,7 @@ There is intentionally **no** script to “init a validator” on an already‑r
  - `scripts/network/reload_peers.sh` reloads `persistent_peers` in a local
    `config.toml` from the current `config/peers.txt` contents and can
    optionally restart the `lumend` service.
- - `scripts/network/state_sync.sh` configures the `[statesync]` section of
+- `scripts/network/state_sync.sh` configures the `[statesync]` section of
    a node's `config.toml` by querying a trusted RPC server for the latest
    height and computing an appropriate trust height/hash, so new sentries
    can bootstrap quickly without replaying all historical blocks.
@@ -199,7 +200,7 @@ and systemd installers without having to manage the `lumend` path manually.
 Before bootstrapping anything, you can tune the templates in `config/`:
 
 - `config/validator/*.toml` – ports, logging, pruning and Prometheus for the validator
-- `config/fullnode/*.toml` – same for sentries / fullnodes
+- `config/fullnode/*.toml` – same for sentries / fullnodes (also used as the base profile for seeds)
 - `config/rpc/*.toml` – RPC/API node (full node exposing 26657/1317/9090)
 - `config/seeds.txt` – optional seed nodes (one `node_id@host:port` per line)
 - `config/peers.txt` – persistent peers you trust (validator ↔ sentries, etc.)

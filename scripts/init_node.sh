@@ -24,6 +24,7 @@ Usage: $(basename "$0") <moniker> [--home DIR] [--rpc URL] [--public-api]
 Joins an existing Lumen network as a fullnode / sentry on this host.
 
 Options:
+  --seed          Use the seed profile (P2P-only bootstrap node).
   --home DIR      Override the node home directory.
                   Default: \$HOME/.lumen (or LUMEN_HOME if set).
   --rpc URL       Trusted RPC endpoint to use for state sync
@@ -53,6 +54,7 @@ EOF
 MONIKER=""
 RPC_URL=""
 PUBLIC_API=0
+SEED_MODE=0
 LUMEN_HOME_OVERRIDE="${LUMEN_HOME:-}"
 
 while [[ $# -gt 0 ]]; do
@@ -64,6 +66,10 @@ while [[ $# -gt 0 ]]; do
     --home)
       LUMEN_HOME_OVERRIDE="${2:-}"
       shift 2 || true
+      ;;
+    --seed)
+      SEED_MODE=1
+      shift
       ;;
     --rpc)
       RPC_URL="${2:-}"
@@ -91,6 +97,11 @@ if [[ -z "$MONIKER" ]]; then
   exit 1
 fi
 
+if [[ "${SEED_MODE}" -eq 1 && "${PUBLIC_API}" -eq 1 ]]; then
+  echo "ERROR: --seed and --public-api cannot be combined."
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
@@ -105,7 +116,12 @@ SERVICE_SCRIPT="${REPO_ROOT}/scripts/install/lumend_service.sh"
 ADD_PEER_SCRIPT="${REPO_ROOT}/scripts/network/add_peer.sh"
 RELOAD_PEERS_SCRIPT="${REPO_ROOT}/scripts/network/reload_peers.sh"
 
-echo "=== Lumen fullnode / sentry init ==="
+ROLE_LABEL="fullnode / sentry"
+if [[ "${SEED_MODE}" -eq 1 ]]; then
+  ROLE_LABEL="seed"
+fi
+
+echo "=== Lumen ${ROLE_LABEL} init ==="
 echo "Moniker   : ${MONIKER}"
 echo "Home      : ${NODE_HOME}"
 echo "RPC (opt) : ${RPC_URL:-<prompt in state_sync.sh>}"
@@ -184,7 +200,10 @@ echo
 echo "[2/5] Joining the network as a node"
 
 JOIN_ARGS=()
-if [[ "${PUBLIC_API}" -eq 1 ]]; then
+if [[ "${SEED_MODE}" -eq 1 ]]; then
+  echo "       Using seed config profile (seed_mode enabled)"
+  JOIN_ARGS+=(--seed)
+elif [[ "${PUBLIC_API}" -eq 1 ]]; then
   echo "       Using RPC/API config profile (config/rpc)"
   JOIN_ARGS+=(--public-api)
 else

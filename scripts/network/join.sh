@@ -34,10 +34,12 @@ PQC_BACKUP=""
 BACKUP_DIR=""
 FORCE=0
 PUBLIC_API=0
+SEED_MODE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --public-api)      PUBLIC_API=1 ;;
+    --seed)            SEED_MODE=1 ;;
     --validator)       MODE="validator" ;;
     --import-validator) IMPORT_VALIDATOR="$2"; shift ;;
     --pqc-backup)       PQC_BACKUP="$2"; shift ;;
@@ -48,6 +50,16 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+if [[ "$SEED_MODE" -eq 1 && "$PUBLIC_API" -eq 1 ]]; then
+  echo "❌ --seed and --public-api cannot be combined" >&2
+  exit 1
+fi
+
+if [[ "$SEED_MODE" -eq 1 && "$MODE" == "validator" ]]; then
+  echo "❌ --seed and --validator cannot be combined" >&2
+  exit 1
+fi
 
 echo "Mode: ${MODE} ($([[ "$MODE" == "validator" ]] && echo "validator" || echo "non-validator"))"
 
@@ -114,22 +126,53 @@ echo "[1/7] Init home: $HOME_DIR"
 # -----------------------------------------------------------------------------
 
 echo "[2/7] Installing config"
+
 CFG_SRC="$CFG_FULL"
-if [[ "$PUBLIC_API" -eq 1 ]]; then
+PROFILE_LABEL="fullnode"
+
+if [[ "$SEED_MODE" -eq 1 ]]; then
+  echo "→ Using seed profile (fullnode config with seed_mode enabled)"
+  PROFILE_LABEL="seed"
+elif [[ "$PUBLIC_API" -eq 1 ]]; then
   if [[ ! -d "$CFG_RPC" ]]; then
     echo "❌ --public-api requested but $CFG_RPC is missing" >&2
     exit 1
   fi
   echo "→ Using RPC/API profile from config/rpc"
   CFG_SRC="$CFG_RPC"
+  PROFILE_LABEL="rpc"
 fi
 
 cp "$CFG_SRC/app.toml"    "$HOME_DIR/config/app.toml"
 cp "$CFG_SRC/client.toml" "$HOME_DIR/config/client.toml"
 cp "$CFG_SRC/config.toml" "$HOME_DIR/config/config.toml"
 
-sed -i "s|^seeds *=.*|seeds = \"$SEEDS\"|" "$HOME_DIR/config/config.toml"
-sed -i "s|^persistent_peers *=.*|persistent_peers = \"$PEERS\"|" "$HOME_DIR/config/config.toml"
+CFG_TOML="$HOME_DIR/config/config.toml"
+CFG_APP="$HOME_DIR/config/app.toml"
+
+sed -i "s|^seeds *=.*|seeds = \"$SEEDS\"|" "$CFG_TOML"
+sed -i "s|^persistent_peers *=.*|persistent_peers = \"$PEERS\"|" "$CFG_TOML"
+
+if [[ "$SEED_MODE" -eq 1 ]]; then
+  echo "→ Applying seed node tweaks (p2p.seed_mode=true, tx_index=null, RPC/API/gRPC disabled)"
+  # Ensure PEX is enabled and seed_mode is true.
+  sed -i 's/^pex *=.*/pex = true/' "$CFG_TOML"
+  sed -i 's/^seed_mode *=.*/seed_mode = true/' "$CFG_TOML"
+  # Seed nodes should not use static persistent peers.
+  sed -i 's|^persistent_peers *=.*|persistent_peers = ""|' "$CFG_TOML"
+  # Disable tx indexer to reduce disk IO.
+  sed -i 's/^indexer *=.*/indexer = "null"/' "$CFG_TOML"
+  # Explicitly disable RPC listener (no JSON-RPC endpoint on seeds).
+  sed -i '/^\[rpc\]/,/^\[/ s|^laddr *=.*|laddr = ""|' "$CFG_TOML"
+  # Optionally tighten peer counts to avoid runaway outbound dials.
+  sed -i '/^\[p2p\]/,/^\[/ s/^max_num_outbound_peers *=.*/max_num_outbound_peers = 20/' "$CFG_TOML"
+  # Harden application-level APIs: keep API off and disable gRPC / gRPC-Web.
+  if [[ -f "$CFG_APP" ]]; then
+    sed -i '/^\[api\]/,/^\[/ s/^enable *=.*/enable = false/' "$CFG_APP"
+    sed -i '/^\[grpc\]/,/^\[/ s/^enable *=.*/enable = false/' "$CFG_APP"
+    sed -i '/^\[grpc-web\]/,/^\[/ s/^enable *=.*/enable = false/' "$CFG_APP"
+  fi
+fi
 
 # -----------------------------------------------------------------------------
 # Install genesis.json
