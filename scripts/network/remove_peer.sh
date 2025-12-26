@@ -143,23 +143,31 @@ echo "✔ Updated $PEERS_FILE"
 echo "   persistent_peers = \"${NEW_JOINED}\""
 
 # -----------------------------------------------------------------------------
-# Update local node config, if present
+# Update local node config, if present (non-seed only)
 # -----------------------------------------------------------------------------
 
 CFG_TOML="$HOME_DIR/config/config.toml"
+IS_SEED_MODE=0
+if [[ -f "$CFG_TOML" ]] && grep -Eq '^[[:space:]]*seed_mode[[:space:]]*=[[:space:]]*true' "$CFG_TOML"; then
+  IS_SEED_MODE=1
+fi
 
 if [[ -f "$CFG_TOML" ]]; then
-  sed -i "s|^persistent_peers *=.*|persistent_peers = \"${NEW_JOINED}\"|" "$CFG_TOML"
-  echo "✔ Updated $CFG_TOML"
+  if [[ "$IS_SEED_MODE" -eq 1 ]]; then
+    echo "Seed node detected: peers.txt updated, local config untouched"
+  else
+    sed -i "s|^persistent_peers *=.*|persistent_peers = \"${NEW_JOINED}\"|" "$CFG_TOML"
+    echo "✔ Updated $CFG_TOML"
+  fi
 else
   echo "ℹ No local config at $CFG_TOML (skipping node home update)"
 fi
 
 # -----------------------------------------------------------------------------
-# Optionally restart systemd service
+# Optionally restart systemd service (non-seed only)
 # -----------------------------------------------------------------------------
 
-if [[ "$RESTART" -eq 1 ]] && command -v systemctl >/dev/null 2>&1; then
+if [[ "$RESTART" -eq 1 && "$IS_SEED_MODE" -ne 1 ]] && command -v systemctl >/dev/null 2>&1; then
   if systemctl list-unit-files | grep -q "^${SERVICE_NAME}.service"; then
     read -rp "Restart systemd service '${SERVICE_NAME}' now? [Y/n] " ANSWER
     ANSWER="${ANSWER:-Y}"
@@ -179,4 +187,3 @@ fi
 
 echo "Done. Current peers string:"
 echo "  ${NEW_JOINED}"
-

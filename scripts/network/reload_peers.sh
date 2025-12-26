@@ -75,6 +75,12 @@ if [[ ! -f "$CFG_TOML" ]]; then
   exit 1
 fi
 
+# Skip reload for seed nodes (they must not use persistent_peers).
+if grep -Eq '^[[:space:]]*seed_mode[[:space:]]*=[[:space:]]*true' "$CFG_TOML"; then
+  echo "Seed node detected: skipping persistent_peers reload"
+  exit 0
+fi
+
 RAW="$(head -n1 "$PEERS_FILE" | tr -d '\r\n ')"
 PEERS="$RAW"
 
@@ -108,4 +114,3 @@ fi
 
 echo "Done. Current persistent_peers in $CFG_TOML:"
 grep -E '^persistent_peers' "$CFG_TOML" || true
-

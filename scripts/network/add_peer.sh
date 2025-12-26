@@ -120,34 +120,42 @@ echo "✔ Updated $PEERS_FILE"
 echo "   persistent_peers = \"$NEW\""
 
 # -----------------------------------------------------------------------------
-# Update local node config, if present
+# Update local node config, if present (non-seed only)
 # -----------------------------------------------------------------------------
 
 CFG_TOML="$HOME_DIR/config/config.toml"
+IS_SEED_MODE=0
+if [[ -f "$CFG_TOML" ]] && grep -Eq '^[[:space:]]*seed_mode[[:space:]]*=[[:space:]]*true' "$CFG_TOML"; then
+  IS_SEED_MODE=1
+fi
 
 if [[ -f "$CFG_TOML" ]]; then
-  # Use sed to replace the persistent_peers line
-  sed -i "s|^persistent_peers *=.*|persistent_peers = \"$NEW\"|" "$CFG_TOML"
-  echo "✔ Updated $CFG_TOML"
+  if [[ "$IS_SEED_MODE" -eq 1 ]]; then
+    echo "Seed node detected: peers.txt updated, local config untouched"
+  else
+    # Use sed to replace the persistent_peers line
+    sed -i "s|^persistent_peers *=.*|persistent_peers = \"$NEW\"|" "$CFG_TOML"
+    echo "✔ Updated $CFG_TOML"
 
-  # Also ensure max_num_inbound_peers is at least the number of peers.
-  # This is mainly relevant on the validator, where defaults may be 0.
-  PEER_COUNT=0
-  IFS=',' read -r -a PEER_ARR <<<"$NEW"
-  for _ in "${PEER_ARR[@]}"; do
-    if [[ -n "${_}" ]]; then
-      PEER_COUNT=$((PEER_COUNT + 1))
-    fi
-  done
+    # Also ensure max_num_inbound_peers is at least the number of peers.
+    # This is mainly relevant on the validator, where defaults may be 0.
+    PEER_COUNT=0
+    IFS=',' read -r -a PEER_ARR <<<"$NEW"
+    for _ in "${PEER_ARR[@]}"; do
+      if [[ -n "${_}" ]]; then
+        PEER_COUNT=$((PEER_COUNT + 1))
+      fi
+    done
 
-  if grep -q '^max_num_inbound_peers' "$CFG_TOML"; then
-    CURRENT_INBOUND=$(grep '^max_num_inbound_peers' "$CFG_TOML" | sed 's/[^0-9]//g' || echo "0")
-    if [[ -z "$CURRENT_INBOUND" ]]; then
-      CURRENT_INBOUND=0
-    fi
-    if (( PEER_COUNT > 0 && CURRENT_INBOUND < PEER_COUNT )); then
-      sed -i "s|^max_num_inbound_peers *=.*|max_num_inbound_peers = $PEER_COUNT|" "$CFG_TOML"
-      echo "✔ Bumped max_num_inbound_peers to $PEER_COUNT in $CFG_TOML"
+    if grep -q '^max_num_inbound_peers' "$CFG_TOML"; then
+      CURRENT_INBOUND=$(grep '^max_num_inbound_peers' "$CFG_TOML" | sed 's/[^0-9]//g' || echo "0")
+      if [[ -z "$CURRENT_INBOUND" ]]; then
+        CURRENT_INBOUND=0
+      fi
+      if (( PEER_COUNT > 0 && CURRENT_INBOUND < PEER_COUNT )); then
+        sed -i "s|^max_num_inbound_peers *=.*|max_num_inbound_peers = $PEER_COUNT|" "$CFG_TOML"
+        echo "✔ Bumped max_num_inbound_peers to $PEER_COUNT in $CFG_TOML"
+      fi
     fi
   fi
 else
@@ -155,10 +163,10 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# Optionally restart systemd service
+# Optionally restart systemd service (non-seed only)
 # -----------------------------------------------------------------------------
 
-if [[ "$RESTART" -eq 1 ]] && command -v systemctl >/dev/null 2>&1; then
+if [[ "$RESTART" -eq 1 && "$IS_SEED_MODE" -ne 1 ]] && command -v systemctl >/dev/null 2>&1; then
   if systemctl list-unit-files | grep -q "^${SERVICE_NAME}.service"; then
     read -rp "Restart systemd service '${SERVICE_NAME}' now? [Y/n] " ANSWER
     ANSWER="${ANSWER:-Y}"
