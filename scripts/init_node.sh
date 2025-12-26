@@ -244,29 +244,33 @@ if [[ ! -f "${CFG_TOML}" ]]; then
 fi
 
 echo
-echo "[4/5] Enabling state sync *before* first start"
-echo "       (this calls scripts/network/state_sync.sh)"
+if [[ -z "${RPC_URL}" ]]; then
+  echo "No RPC provided, skipping state sync. Bootstrap will rely on seeds + PEX."
+else
+  echo "[4/5] Enabling state sync *before* first start"
+  echo "       (this calls scripts/network/state_sync.sh)"
 
-STATE_SYNC_ARGS=(--home "${NODE_HOME}")
-if [[ -n "${RPC_URL}" ]]; then
-  STATE_SYNC_ARGS+=(--rpc "${RPC_URL}")
-fi
+  STATE_SYNC_ARGS=(--home "${NODE_HOME}")
+  if [[ -n "${RPC_URL}" ]]; then
+    STATE_SYNC_ARGS+=(--rpc "${RPC_URL}")
+  fi
 
-# The state_sync helper will:
-#   - query the trusted RPC for the latest height
-#   - pick a trust height/hash window
-#   - write the [statesync] section in config.toml
-# We run it before any systemd service exists to ensure the very first
-# start uses state sync instead of replaying from genesis.
-"${STATE_SYNC_SCRIPT}" "${STATE_SYNC_ARGS[@]}"
+  # The state_sync helper will:
+  #   - query the trusted RPC for the latest height
+  #   - pick a trust height/hash window
+  #   - write the [statesync] section in config.toml
+  # We run it before any systemd service exists to ensure the very first
+  # start uses state sync instead of replaying from genesis.
+  "${STATE_SYNC_SCRIPT}" "${STATE_SYNC_ARGS[@]}"
 
-echo
-echo "Verifying that state sync is enabled in ${CFG_TOML} ..."
-if ! grep -Eq '^\s*enable\s*=\s*true' "${CFG_TOML}"; then
-  echo "ERROR: state sync does not appear to be enabled in ${CFG_TOML}."
-  echo "Refusing to install/start the service. Inspect the file and,"
-  echo "if needed, re-run scripts/network/state_sync.sh manually."
-  exit 1
+  echo
+  echo "Verifying that state sync is enabled in ${CFG_TOML} ..."
+  if ! grep -Eq '^\s*enable\s*=\s*true' "${CFG_TOML}"; then
+    echo "ERROR: state sync does not appear to be enabled in ${CFG_TOML}."
+    echo "Refusing to install/start the service. Inspect the file and,"
+    echo "if needed, re-run scripts/network/state_sync.sh manually."
+    exit 1
+  fi
 fi
 
 # Optional: push the state sync RPC node into persistent_peers before the

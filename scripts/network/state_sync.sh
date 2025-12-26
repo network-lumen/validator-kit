@@ -96,8 +96,8 @@ else
 fi
 
 if [[ -z "$RPC_SERVERS" ]]; then
-  read -rp "RPC server(s) for state sync (comma-separated) [http://100.64.0.1:26657]: " RPC_SERVERS
-  RPC_SERVERS="${RPC_SERVERS:-http://100.64.0.1:26657}"
+  echo "No RPC provided, skipping state sync. Bootstrap will rely on seeds + PEX."
+  exit 0
 fi
 
 # CometBFT requires at least 2 RPC servers for the light client.
