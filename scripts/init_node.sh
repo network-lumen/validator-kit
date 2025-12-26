@@ -220,7 +220,9 @@ HOME="${HELPER_HOME}" "${JOIN_SCRIPT}" "${MONIKER}" "${JOIN_ARGS[@]}"
 echo
 echo "[2b/5] Reinforcing peers from config/peers.txt (post-join)"
 
-if [[ -n "${RELOAD_PEERS_SCRIPT}" ]]; then
+if [[ "${SEED_MODE}" -eq 1 ]]; then
+  echo "→ Skipping persistent_peers reload (seed mode)"
+elif [[ -n "${RELOAD_PEERS_SCRIPT}" ]]; then
   "${RELOAD_PEERS_SCRIPT}" --home "${NODE_HOME}" --no-restart
 fi
 
@@ -269,7 +271,7 @@ fi
 
 # Optional: push the state sync RPC node into persistent_peers before the
 # first start, so snapshot discovery works reliably through that peer.
-if [[ -n "${RPC_URL}" && -n "${ADD_PEER_SCRIPT}" ]]; then
+if [[ "${SEED_MODE}" -ne 1 && -n "${RPC_URL}" && -n "${ADD_PEER_SCRIPT}" ]]; then
   echo
   echo "[4b/5] Adding state sync RPC as a persistent peer"
 
@@ -318,7 +320,10 @@ if [[ -n "${RPC_URL}" && -n "${ADD_PEER_SCRIPT}" ]]; then
   fi
 fi
 
-if [[ -n "${RELOAD_PEERS_SCRIPT}" ]]; then
+if [[ "${SEED_MODE}" -eq 1 ]]; then
+  echo
+  echo "→ Skipping persistent_peers reload (seed mode)"
+elif [[ -n "${RELOAD_PEERS_SCRIPT}" ]]; then
   echo
   echo "→ Reinforcing peers from config/peers.txt (post-RPC injection)"
   "${RELOAD_PEERS_SCRIPT}" --home "${NODE_HOME}" --no-restart
@@ -393,6 +398,36 @@ else
       exit 1
     fi
   fi
+fi
+
+if [[ "${SEED_MODE}" -eq 1 ]]; then
+  echo
+  echo "[seed] Post-start hardening (enforcing seed config)"
+
+  CFG_TOML="${NODE_HOME}/config/config.toml"
+  CFG_APP="${NODE_HOME}/config/app.toml"
+
+  if systemctl is-active --quiet lumend 2>/dev/null; then
+    echo "→ Stopping lumend for seed hardening"
+    sudo systemctl stop lumend || true
+  fi
+
+  if [[ -f "${CFG_TOML}" ]]; then
+    sed -i 's|^persistent_peers *=.*|persistent_peers = ""|' "${CFG_TOML}"
+    sed -i 's/^pex *=.*/pex = true/' "${CFG_TOML}"
+    sed -i 's/^seed_mode *=.*/seed_mode = true/' "${CFG_TOML}"
+    sed -i 's/^indexer *=.*/indexer = "null"/' "${CFG_TOML}"
+    sed -i '/^\[rpc\]/,/^\[/ s|^laddr *=.*|laddr = ""|' "${CFG_TOML}"
+  fi
+
+  if [[ -f "${CFG_APP}" ]]; then
+    sed -i '/^\[api\]/,/^\[/ s/^enable *=.*/enable = false/' "${CFG_APP}"
+    sed -i '/^\[grpc\]/,/^\[/ s/^enable *=.*/enable = false/' "${CFG_APP}"
+    sed -i '/^\[grpc-web\]/,/^\[/ s/^enable *=.*/enable = false/' "${CFG_APP}"
+  fi
+
+  echo "→ Starting lumend after seed hardening"
+  sudo systemctl start lumend || true
 fi
 
 echo
