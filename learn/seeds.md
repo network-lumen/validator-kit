@@ -148,6 +148,7 @@ Running a seed on the same host as:
 - a validator
 - a sentry
 - or a full node
+  
 creates:
 - identity confusion
 - addrbook pollution
