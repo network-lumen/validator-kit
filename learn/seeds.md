@@ -118,16 +118,19 @@ ss -lntp | grep lumend
 
 ## Common misconceptions
 
-*“My seed is syncing, that means it works”*
+---
+
+***“My seed is syncing, that means it works”***
 
 **A seed syncing the chain is:**
-
 - harmless
 - unnecessary
 - not its purpose
 - seed_mode = true does not mean “minimal node”.
 
 It only changes PEX behavior.
+
+---
 
 ***“A seed should be a stable peer”***
 
