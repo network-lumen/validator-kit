@@ -138,7 +138,10 @@ It only changes PEX behavior.
 - A seed should not be relied upon as a persistent connection.
 - If nodes depend on a seed to stay connected, something is wrong.
 
+---
+
 ***“Seed + validator on the same machine is fine”***
+
 **No.**
 
 Running a seed on the same host as:
