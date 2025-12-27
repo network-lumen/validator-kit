@@ -98,7 +98,22 @@ fi
 # -----------------------------------------------------------------------------
 
 [[ -f "$SEEDS_FILE" ]] || { echo "❌ Missing $SEEDS_FILE"; exit 1; }
-SEEDS="$(head -n1 "$SEEDS_FILE" | tr -d '\r\n')"
+
+# Collect all non-empty, trimmed lines from seeds.txt and join as a comma-separated list.
+SEEDS="$(
+  awk '
+    BEGIN { seeds = "" }
+    {
+      gsub(/\r/, "")                          # strip CR
+      gsub(/^[ \t]+|[ \t]+$/, "", $0)         # trim
+      if ($0 != "") {
+        if (seeds == "") { seeds = $0 }
+        else { seeds = seeds "," $0 }
+      }
+    }
+    END { print seeds }
+  ' "$SEEDS_FILE"
+)"
 
 PEERS=""
 if [[ -f "$PEERS_FILE" ]]; then
