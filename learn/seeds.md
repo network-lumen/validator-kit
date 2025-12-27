@@ -87,9 +87,8 @@ RPC must not be exposed:
 ```
 [rpc]
 laddr = ""
-Local RPC bound to 127.0.0.1 is acceptable but unnecessary.
 ```
-
+Local RPC bound to 127.0.0.1 is acceptable but unnecessary.
 All application-level APIs should be disabled:
 
 ```
