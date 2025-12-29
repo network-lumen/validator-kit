@@ -63,12 +63,17 @@ info "Valoper:  $VALOPER"
 ###############################################################################
 step "Checking validator status and PQC link"
 
-if ! "$BIN" q staking validator "$VALOPER" --node "$RPC" >/dev/null 2>&1; then
+if ! "$BIN" q staking validator "$VALOPER" --node "$RPC" >/devnull 2>&1; then
   error "This address is not a validator on-chain. Run become_validator first."
 fi
 
 if ! "$BIN" q pqc account "$FROM_ADDR" --node "$RPC" >/dev/null 2>&1; then
   error "PQC account is not linked on-chain for $FROM_ADDR. Validator setup is incomplete."
+fi
+
+PQC_KEY="validator-pqc"
+if ! "$BIN" keys pqc-show "$PQC_KEY" --home "$HOME_DIR" --keyring-backend "$KEYRING" >/dev/null 2>&1; then
+  error "PQC key '$PQC_KEY' not found in $HOME_DIR (keyring=$KEYRING); run become_validator on this host first."
 fi
 
 ###############################################################################
@@ -82,6 +87,8 @@ DELEG=$("$BIN" tx staking delegate "$VALOPER" "$AMOUNT" \
   --keyring-backend "$KEYRING" \
   --chain-id "$CHAIN_ID" \
   --node "$RPC" \
+  --pqc-from "$FROM_ADDR" \
+  --pqc-key "$PQC_KEY" \
   --fees "$FEES" \
   --gas auto \
   --gas-adjustment 1.5 \
