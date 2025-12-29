@@ -31,9 +31,10 @@ Most operators should use `./join.sh` at the repo root. For finer control:
   - Orchestrates: join → optional state sync → systemd service install.  
   - Same semantics as `./join.sh`, but callable directly from `ops/scripts`.
 
-- `scripts/network/join.sh <moniker> [--seed|--public-api|--validator] [--force]`  
-  - Low-level helper that only initializes the node home (config + keys) from `config/` and `genesis.json`.  
-  - Does not touch systemd; you run `lumend start` or install a service yourself.
+- `scripts/network/join.sh <moniker> [--seed|--public-api] [--force]`  
+  - Low-level helper that initializes a non-validator node home (config + genesis) from `config/` and `genesis.json`.  
+  - Does not touch systemd; you run `lumend start` or install a service yourself.  
+  - Promotion to validator + staking is handled by the blockchain helpers under `scripts/blockchain/`.
 
 ## Backups & snapshots
 

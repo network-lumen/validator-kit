@@ -214,7 +214,6 @@ fi
 #   - initializes a .lumen home
 #   - copies config/{fullnode,rpc}/*.toml and genesis.json
 #   - sets seeds/persistent_peers from config/*.txt
-#   - creates PQC keys and a join-node.bak backup
 HOME="${HELPER_HOME}" "${JOIN_SCRIPT}" "${MONIKER}" "${JOIN_ARGS[@]}"
 
 echo
@@ -224,17 +223,6 @@ if [[ "${SEED_MODE}" -eq 1 ]]; then
   echo "→ Skipping persistent_peers reload (seed mode)"
 elif [[ -n "${RELOAD_PEERS_SCRIPT}" ]]; then
   "${RELOAD_PEERS_SCRIPT}" --home "${NODE_HOME}" --no-restart
-fi
-
-BACKUP_DIR="${NODE_HOME}/join-node.bak"
-
-echo
-echo "[3/5] Verifying join backup at ${BACKUP_DIR}"
-
-if [[ ! -d "${BACKUP_DIR}" ]]; then
-  echo "ERROR: expected backup directory ${BACKUP_DIR} was not created."
-  echo "Aborting before enabling state sync or installing a service."
-  exit 1
 fi
 
 CFG_TOML="${NODE_HOME}/config/config.toml"
@@ -437,7 +425,11 @@ fi
 echo
 echo "=== Node init complete ==="
 echo "Home directory : ${NODE_HOME}"
-echo "Local backup   : ${BACKUP_DIR}"
+if [[ -d "${BACKUP_DIR}" ]]; then
+  echo "Local backup   : ${BACKUP_DIR}"
+else
+  echo "Local backup   : <none created by init_node.sh>"
+fi
 echo
 echo "You can inspect the service with:"
 echo "  sudo systemctl status lumend"

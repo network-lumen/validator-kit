@@ -39,8 +39,7 @@ cd validator-kit
 - `./join.sh` uses the toolkit to:
   - initialize a `.lumen` home (or the one specified via `--home` / `LUMEN_HOME`),
   - copy templates from `config/`,
-  - install and start a `lumend` systemd service,
-  - create a local backup (`join-node.bak`).
+  - install and start a `lumend` systemd service.
 
 ### Bootstrap modes
 

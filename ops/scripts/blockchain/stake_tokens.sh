@@ -58,59 +58,16 @@ info "Account:  $FROM_ADDR"
 info "Valoper:  $VALOPER"
 
 ###############################################################################
-#  PQC KEY CHECK
+#  VALIDATOR / PQC GUARDS
 ###############################################################################
-step "Checking PQC key"
-PQC_KEY="validator-pqc"
+step "Checking validator status and PQC link"
 
-if ! lumend keys pqc-show "$PQC_KEY" >/dev/null 2>&1; then
-    error "PQC key '$PQC_KEY' not found — cannot continue"
+if ! lumend q staking validator "$VALOPER" --node "$RPC" >/dev/null 2>&1; then
+  error "This address is not a validator on-chain. Run become_validator first."
 fi
 
-info "Using PQC key: $PQC_KEY"
-
-###############################################################################
-#  EXTRACT PQC PUBKEY
-###############################################################################
-PUB=$(lumend keys pqc-show "$PQC_KEY" \
-      | grep "PubKey (hex)" \
-      | sed 's/.*PubKey (hex): *//')
-
-[ -n "$PUB" ] || error "Failed to extract PQC pubkey"
-
-info "PQC pubkey length: $(echo -n "$PUB" | wc -c)"
-
-###############################################################################
-#  CHECK / LINK PQC ACCOUNT
-###############################################################################
-step "Checking on-chain PQC link"
-
-if lumend q pqc account "$FROM_ADDR" --node "$RPC" >/dev/null 2>&1; then
-    info "PQC already linked on-chain"
-else
-    step "Linking PQC account..."
-
-    LINK=$(lumend tx pqc link-account \
-      --from "$FROM" \
-      --pubkey "$PUB" \
-      --scheme dilithium3 \
-      --chain-id "$CHAIN_ID" \
-      --home "$HOME_DIR" \
-      --keyring-backend "$KEYRING" \
-      --node "$RPC" \
-      --gas 250000 \
-      --fees "$FEES" \
-      --yes \
-      -o json)
-
-    LINK_HASH=$(echo "$LINK" | jq -r '.txhash // empty')
-    [ -n "$LINK_HASH" ] || error "Failed to extract txhash from link-account response"
-
-    step "Waiting for PQC link tx commit..."
-    CODE=$(wait_tx "$LINK_HASH") || error "Timeout waiting for PQC link tx"
-    [ "$CODE" = "0" ] || error "PQC link-account failed with code=$CODE"
-
-    info "PQC link-account OK"
+if ! lumend q pqc account "$FROM_ADDR" --node "$RPC" >/dev/null 2>&1; then
+  error "PQC account is not linked on-chain for $FROM_ADDR. Validator setup is incomplete."
 fi
 
 ###############################################################################
