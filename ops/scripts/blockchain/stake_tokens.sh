@@ -6,6 +6,7 @@ set -euo pipefail
 ###############################################################################
 FROM="${FROM:-validator}"
 HOME_DIR="${HOME_DIR:-$HOME/.lumen}"
+BIN="${BIN:-lumend}"
 KEYRING="${KEYRING:-test}"
 CHAIN_ID="${CHAIN_ID:-lumen}"
 RPC="${RPC:-http://127.0.0.1:26657}"
@@ -24,7 +25,7 @@ wait_tx() {
   local hash="$1"
   for _ in $(seq 1 60); do
     local out
-    out=$(lumend q tx "$hash" --node "$RPC" 2>/dev/null || true)
+    out=$("$BIN" q tx "$hash" --node "$RPC" 2>/dev/null || true)
     local code
     code=$(echo "$out" | awk '/code:/ {print $2; exit}')
     if [ -n "$code" ]; then
@@ -51,8 +52,8 @@ done
 ###############################################################################
 #  ADDRESSES
 ###############################################################################
-FROM_ADDR=$(lumend keys show "$FROM" -a --home "$HOME_DIR" --keyring-backend "$KEYRING")
-VALOPER=$(lumend keys show "$FROM" --bech val -a --home "$HOME_DIR" --keyring-backend "$KEYRING")
+FROM_ADDR=$("$BIN" keys show "$FROM" -a --home "$HOME_DIR" --keyring-backend "$KEYRING")
+VALOPER=$("$BIN" keys show "$FROM" --bech val -a --home "$HOME_DIR" --keyring-backend "$KEYRING")
 
 info "Account:  $FROM_ADDR"
 info "Valoper:  $VALOPER"
@@ -62,11 +63,11 @@ info "Valoper:  $VALOPER"
 ###############################################################################
 step "Checking validator status and PQC link"
 
-if ! lumend q staking validator "$VALOPER" --node "$RPC" >/dev/null 2>&1; then
+if ! "$BIN" q staking validator "$VALOPER" --node "$RPC" >/dev/null 2>&1; then
   error "This address is not a validator on-chain. Run become_validator first."
 fi
 
-if ! lumend q pqc account "$FROM_ADDR" --node "$RPC" >/dev/null 2>&1; then
+if ! "$BIN" q pqc account "$FROM_ADDR" --node "$RPC" >/dev/null 2>&1; then
   error "PQC account is not linked on-chain for $FROM_ADDR. Validator setup is incomplete."
 fi
 
@@ -75,7 +76,7 @@ fi
 ###############################################################################
 step "Delegating $AMOUNT"
 
-DELEG=$(lumend tx staking delegate "$VALOPER" "$AMOUNT" \
+DELEG=$("$BIN" tx staking delegate "$VALOPER" "$AMOUNT" \
   --from "$FROM" \
   --home "$HOME_DIR" \
   --keyring-backend "$KEYRING" \

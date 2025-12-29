@@ -33,7 +33,7 @@ For most operators, the flow is:
 ```bash
 git clone https://github.com/network-lumen/validator-kit.git
 cd validator-kit
-./join.sh <moniker> [--rpc http://trusted:26657] [--public-api]
+./join.sh <moniker> [--public-api]
 ```
 
 - `./join.sh` uses the toolkit to:
@@ -41,17 +41,82 @@ cd validator-kit
   - copy templates from `config/`,
   - install and start a `lumend` systemd service.
 
-### Bootstrap modes
+By design, this join step creates a **non-validator** full node / sentry / RPC node only.
+Promotion to validator and staking are handled explicitly in `ops/scripts/blockchain/`.
 
-- With `--rpc http://trusted:26657` – state sync is configured against this RPC before the first start.
-- Without `--rpc` – no state sync is configured; the node syncs via `config/seeds.txt` + PEX (classic blocksync).
+### Fast sync (recommended)
 
-### Becoming a validator
+If you have a trusted RPC endpoint and want to avoid replaying all blocks:
 
-There is deliberately **no** “init validator” script on an already-running network.
+1. Join the network and let `./join.sh` create the node home and systemd service:
+   ```bash
+   ./join.sh <moniker> [--public-api]
+   ```
+2. Stop the node before it starts replaying from genesis:
+   ```bash
+   sudo systemctl stop lumend
+   ```
+3. Clear local state only (keep config and keys):
+   ```bash
+   rm -rf ~/.lumen/data
+   mkdir -p ~/.lumen/data
+   printf '{ "height": "0", "round": 0, "step": 0 }\n' \
+     > ~/.lumen/data/priv_validator_state.json
+   ```
+4. Configure state sync against a trusted RPC:
+   ```bash
+   ops/scripts/network/state_sync.sh \
+     --home ~/.lumen \
+     --rpc http://trusted-rpc:26657 \
+     --last 100
+   ```
+5. Restart the node:
+   ```bash
+   sudo systemctl start lumend
+   ```
 
-1. First join and sync via `./join.sh`.  
-2. Then follow the procedure in `ops/become_validator.md` (tx `staking create-validator`, etc.).
+The node will then fast-forward via state sync instead of replaying the full chain.
+
+### Becoming a validator (single path)
+
+Once your node is synced and stable:
+
+1. **Create or import the validator wallet on the node host**  
+   ```bash
+   lumend keys add validator --home ~/.lumen --keyring-backend test
+   # or, to import an existing mnemonic:
+   lumend keys add validator --home ~/.lumen --keyring-backend test --recover
+   ```
+   Save the mnemonic **off-host** before proceeding.
+
+2. **Fund the validator account**  
+   Send LMN to the address:
+   ```bash
+   lumend keys show validator -a --home ~/.lumen --keyring-backend test
+   ```
+
+3. **Promote this node to validator**  
+   From the repo root:
+   ```bash
+   HOME_DIR=~/.lumen FROM=validator \
+     ops/scripts/blockchain/become_validator.sh --moniker "<public-validator-name>"
+   ```
+   This script will:
+   - ensure a PQC key `validator-pqc` exists (and generate it if needed),
+   - link the PQC account on-chain,
+   - use the existing consensus pubkey from `lumend tendermint show-validator`,
+   - broadcast `tx staking create-validator` with a minimal self-delegation,
+   - optionally create a structured backup under `~/.lumen/validator-node.bak`.
+
+4. **Stake more tokens (optional, separate step)**  
+   Once the validator exists on-chain and PQC is linked:
+   ```bash
+   HOME_DIR=~/.lumen FROM=validator \
+     ops/scripts/blockchain/stake_tokens.sh --amount <NUMulmn>
+   ```
+   This script refuses to run unless:
+   - the address is already a validator on-chain, and  
+   - the PQC account is linked.
 
 ### Important files
 

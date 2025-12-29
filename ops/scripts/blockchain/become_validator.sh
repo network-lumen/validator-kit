@@ -18,6 +18,22 @@ step() { echo -e "\033[36m[step]\033[0m $*"; }
 info() { echo -e "\033[32m[info]\033[0m $*"; }
 error() { echo -e "\033[31m[error]\033[0m $*" >&2; exit 1; }
 
+wait_tx() {
+  local hash="$1"
+  local tries=60
+  local out code
+  for _ in $(seq 1 "$tries"); do
+    out=$($BIN q tx "$hash" --node "$RPC" -o json 2>/dev/null || true)
+    code=$(echo "$out" | jq -r '.code // empty')
+    if [[ -n "$code" ]]; then
+      echo "$code"
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 # ------------------------- ARGS -------------------------
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -100,7 +116,11 @@ else
     [ -n "$LINK_HASH" ] || error "Failed to extract PQC link tx hash"
 
     CODE=$(echo "$LINK_RES" | jq -r '.code // 0')
-    [ "$CODE" = "0" ] || error "PQC link-account failed: code=$CODE"
+    [ "$CODE" = "0" ] || error "PQC link-account failed (CheckTx): code=$CODE"
+
+    step "Waiting for PQC link tx to commit"
+    LINK_COMMIT_CODE=$(wait_tx "$LINK_HASH") || error "Timeout waiting for PQC link tx to commit"
+    [ "$LINK_COMMIT_CODE" = "0" ] || error "PQC link-account failed on commit: code=$LINK_COMMIT_CODE"
 
     info "PQC linked successfully (Tx: $LINK_HASH)"
 fi
@@ -137,6 +157,8 @@ RES=$($BIN tx staking create-validator "$TMP_JSON" \
     --chain-id "$CHAIN_ID" \
     --keyring-backend "$KEYRING" \
     --home "$HOME_DIR" \
+    --pqc-from "$FROM_ADDR" \
+    --pqc-key "$PQC_NAME" \
     --gas auto \
     --gas-adjustment "$GAS_ADJ" \
     --yes \
