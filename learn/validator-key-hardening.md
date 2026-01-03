@@ -152,10 +152,38 @@ Everything else is optional and often harmful.
 
 ---
 
-## Lumen position
+## Reference implementation
 
-On Lumen:
+Lumen provides a reference script to apply this hardening model safely.
 
-- validator security is prioritized over convenience
-- operators are encouraged to harden hosts early
-- clear separation of responsibilities is expected
+After **properly backing up all account and PQC keys**, operators may use:
+
+```
+./validator-kit/ops/scripts/network/scrub_validator_keys.sh
+```
+
+This script is designed to:
+
+- **remove transaction-level keys only**
+  - `keyring-*`
+  - `pqc_keys`
+- **preserve consensus-critical material**
+  - `config/priv_validator_key.json`
+  - `config/node_key.json`
+
+When executed correctly, the validator host:
+
+- continues to participate in consensus
+- continues to sign blocks
+- **can no longer create or sign transactions**
+
+⚠️ **Important**
+
+- This script must be run **only after exporting and securing all required keys offline**.
+- Removing consensus keys will immediately break validator operation.
+- This script intentionally does **not** touch consensus material.
+
+The goal is to harden validator hosts by enforcing a strict separation between:
+- **consensus responsibilities**
+- **transactional authority**
+
