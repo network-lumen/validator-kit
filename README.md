@@ -26,6 +26,25 @@ THERE IS NO FUND RECOVERY.**
 
 ---
 
+## 🚨 DOUBLE-SIGNING WARNING
+
+**NEVER run the same validator on more than ONE node.**
+
+The file:
+- `~/.lumen/config/priv_validator_key.json`
+
+**MUST exist on ONE running machine only.**
+
+❌ Do NOT copy it to a sentry  
+❌ Do NOT run two nodes with it  
+❌ Do NOT restore a backup while another node is running  
+
+⚠️ **Double-signing = instant slashing + permanent jail. No recovery.**
+
+**Validator = 1 key = 1 running node.**
+
+---
+
 ## Join the network (root workflow)
 
 For most operators, the flow is:
