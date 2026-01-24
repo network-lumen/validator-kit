@@ -23,12 +23,12 @@ There is no discretionary slashing and no validator-specific punishment.
 **Decentralization roadmap**
 
 The founders stake is not intended to remain dominant.
-
+~~
 **Phase 1 — Bootstrap**
 - Validator onboarding
 - ~25% of founders stake delegated
 - Focus: liveness and operational validation
-
+~~
 **Phase 2 — Infrastructure & product delivery**
 - IPFS, Gateways and browser shipped
 - Network distribution layer goes live
