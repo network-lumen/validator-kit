@@ -30,9 +30,9 @@ There is no discretionary slashing and no validator-specific punishment.
 - Founders retain operational flexibility
 
 ~~**Phase 3 — Network opening**~~
-~~- Additional ~25% of founders stake delegated~~
-~~- Validator set participation increases~~
-~~- Reduced reliance on founders-controlled stake~~
+- ~~Additional ~25% of founders stake delegated~~
+- ~~Validator set participation increases~~
+- ~~Reduced reliance on founders-controlled stake~~
 
 **Phase 4 — Stabilization**
 - Progressive reduction of founders-controlled stake
