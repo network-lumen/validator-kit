@@ -1,10 +1,6 @@
 {
-  "app_name": "\u003cappd\u003e",
-  "app_version": "v1.2.0-dirty",
-  "genesis_time": "2025-11-26T16:46:01.597376302Z",
-  "chain_id": "lumen",
-  "initial_height": 1,
   "app_hash": null,
+  "app_name": "\u003cappd\u003e",
   "app_state": {
     "auth": {
       "params": {
@@ -17,16 +13,9 @@
       "accounts": [
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "address": "lmn1lktzy6v7690lzkjjms8eqrqrl4rgd08y5hv4y9",
+          "address": "lmn1uu4x7aur6u596w37nwe3z5semc7pthvj56449z",
           "pub_key": null,
           "account_number": "0",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "address": "lmn1ksjeadh54n72f5792c9nn6xqdjvtp85j6akkkc",
-          "pub_key": null,
-          "account_number": "1",
           "sequence": "0"
         }
       ]
@@ -38,20 +27,11 @@
       },
       "balances": [
         {
-          "address": "lmn1ksjeadh54n72f5792c9nn6xqdjvtp85j6akkkc",
+          "address": "lmn1uu4x7aur6u596w37nwe3z5semc7pthvj56449z",
           "coins": [
             {
               "denom": "ulmn",
-              "amount": "1000000"
-            }
-          ]
-        },
-        {
-          "address": "lmn1lktzy6v7690lzkjjms8eqrqrl4rgd08y5hv4y9",
-          "coins": [
-            {
-              "denom": "ulmn",
-              "amount": "1000000"
+              "amount": "1000000000000"
             }
           ]
         }
@@ -59,7 +39,7 @@
       "supply": [
         {
           "denom": "ulmn",
-          "amount": "2000000"
+          "amount": "1000000000000"
         }
       ],
       "denom_metadata": [],
@@ -94,7 +74,7 @@
         "t": "50",
         "grace_days": "7",
         "auction_days": "7",
-        "transfer_fee_ulmn": "1000000",
+        "transfer_fee_ulmn": "100000",
         "bid_fee_ulmn": "1000",
         "update_rate_limit_seconds": "60",
         "update_pow_difficulty": 12,
@@ -130,7 +110,7 @@
             "multiplier_bps": 7000
           }
         ],
-        "min_price_ulmn_per_month": "2000000"
+        "min_price_ulmn_per_month": "30000000"
       },
       "domain_map": [],
       "auction_map": []
@@ -143,8 +123,8 @@
         "finalizer_reward_bps": 500,
         "min_price_ulmn_per_month": "100000",
         "max_active_contracts_per_gateway": 100,
-        "action_fee_ulmn": "1000",
-        "register_gateway_fee_ulmn": "50000000"
+        "action_fee_ulmn": "100000",
+        "register_gateway_fee_ulmn": "2000000"
       },
       "gateways": [],
       "contracts": [],
@@ -159,7 +139,7 @@
               {
                 "@type": "/cosmos.staking.v1beta1.MsgCreateValidator",
                 "description": {
-                  "moniker": "node-1",
+                  "moniker": "testnet-genesis",
                   "identity": "",
                   "website": "",
                   "security_contact": "",
@@ -172,18 +152,18 @@
                 },
                 "min_self_delegation": "1",
                 "delegator_address": "",
-                "validator_address": "lmnvaloper1ksjeadh54n72f5792c9nn6xqdjvtp85j80lhlx",
+                "validator_address": "lmnvaloper1uu4x7aur6u596w37nwe3z5semc7pthvjfgu5vu",
                 "pubkey": {
                   "@type": "/cosmos.crypto.ed25519.PubKey",
-                  "key": "nsg5agGKlNxqvOR8HbZLtheOqUFCA9m0+QqbHSEVAsY="
+                  "key": "/MWteW8zS6iM+28/rJt3XdP+eqtfDE6+Nj1bXwnqGfo="
                 },
                 "value": {
                   "denom": "ulmn",
-                  "amount": "1000000"
+                  "amount": "1000000000"
                 }
               }
             ],
-            "memo": "974e511644f8b7e5b500381f63aca441265ba8a2@192.168.1.20:26656",
+            "memo": "c32170b69f83ff7f6d11bd275a3e81496c54963f@172.28.209.134:26656",
             "timeout_height": "0",
             "unordered": false,
             "timeout_timestamp": null,
@@ -195,7 +175,7 @@
               {
                 "public_key": {
                   "@type": "/cosmos.crypto.secp256k1.PubKey",
-                  "key": "AsTOLN5yYmJ/g9jvtKeZ5iHsrIcUvGa2g5bfcinJs7Zk"
+                  "key": "A9WgOC3HY4wNIg1IK2pjj639q6E22PJS6ozWdD+qPn3v"
                 },
                 "mode_info": {
                   "single": {
@@ -214,7 +194,7 @@
             "tip": null
           },
           "signatures": [
-            "OxJLgHFKoSSLrVMt080JDsnadRBYDz2OQDXFLI/Tr+QLzSk7rAbiP8ImLRjAHEjUuYEixrVFDEgAaEbWsuNgyA=="
+            "7TGh3aeo0Ssp8j+RU1yHM0OFGe30OjNEwnmISBJ7sRYCT9jc1/gwbfMZad+Pwhsa2UJSEOmBZSsanvjtLP0Mmw=="
           ]
         }
       ]
@@ -260,14 +240,9 @@
     "pqc": {
       "accounts": [
         {
-          "addr": "lmn1lktzy6v7690lzkjjms8eqrqrl4rgd08y5hv4y9",
+          "addr": "lmn1uu4x7aur6u596w37nwe3z5semc7pthvj56449z",
           "scheme": "dilithium3",
-          "pub_key_hash": "neu03doeymzcFMnPgeZfWkC05NUpHAUy1k5wVrctV8o="
-        },
-        {
-          "addr": "lmn1ksjeadh54n72f5792c9nn6xqdjvtp85j6akkkc",
-          "scheme": "dilithium3",
-          "pub_key_hash": "odlz0/a/aGuksCkLwWyc3ui+rNyYJlvqfjJOl+dWjIs="
+          "pub_key_hash": "ClLKvSxXDbZY0JUENDWt9zEa37HNww2Fyyy6dxV0FjA="
         }
       ],
       "params": {
@@ -301,17 +276,6 @@
       "bundle_count": "0"
     },
     "runtime": null,
-    "slashing": {
-      "params": {
-        "signed_blocks_window": "100",
-        "min_signed_per_window": "0.500000000000000000",
-        "downtime_jail_duration": "600s",
-        "slash_fraction_double_sign": "0.050000000000000000",
-        "slash_fraction_downtime": "0.010000000000000000"
-      },
-      "signing_infos": [],
-      "missed_blocks": []
-    },
     "staking": {
       "params": {
         "unbonding_time": "1814400s",
@@ -342,8 +306,20 @@
       },
       "total_minted_ulmn": "0"
     },
-    "upgrade": {}
+    "slashing": {
+      "params": {
+        "signed_blocks_window": "100",
+        "min_signed_per_window": "0.500000000000000000",
+        "downtime_jail_duration": "600s",
+        "slash_fraction_double_sign": "0.050000000000000000",
+        "slash_fraction_downtime": "0.010000000000000000"
+      },
+      "signing_infos": [],
+      "missed_blocks": []
+    }
   },
+  "app_version": "v1.4.0",
+  "chain_id": "lumen-testnet-1",
   "consensus": {
     "params": {
       "block": {
@@ -367,5 +343,7 @@
         "vote_extensions_enable_height": "0"
       }
     }
-  }
+  },
+  "genesis_time": "2026-01-24T12:53:19.340329002Z",
+  "initial_height": 1
 }
