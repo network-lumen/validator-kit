@@ -12,9 +12,9 @@ set -euo pipefail
 #   LUMEN_TARGET=./bin/lumend ./scripts/install/download_lumend.sh
 #
 # Defaults:
-#   - RELEASE_TAG: v1.4.0
+#   - RELEASE_TAG: v.2
 #   - linux/amd64 tarball URL:
-#       https://github.com/network-lumen/blockchain/releases/download/v1.4.0/linux-amd64-v1.4.0.tar.gz
+#       https://github.com/network-lumen/blockchain/releases/download/v1.4.2/linux-amd64-v1.4.2.tar.gz
 #   - TARGET: deploy/bin/lumend (relative to repo root)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,7 +22,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 BIN_DIR="${REPO_ROOT}/bin"
 mkdir -p "${BIN_DIR}"
 
-RELEASE_TAG="${LUMEN_RELEASE_TAG:-v1.4.0}"
+RELEASE_TAG="${LUMEN_RELEASE_TAG:-v1.4.2}"
 DEFAULT_URL="https://github.com/network-lumen/blockchain/releases/download/${RELEASE_TAG}/linux-amd64-${RELEASE_TAG}.tar.gz"
 RELEASE_URL="${LUMEN_RELEASE_URL:-$DEFAULT_URL}"
 TARGET="${LUMEN_TARGET:-${BIN_DIR}/lumend}"
@@ -64,7 +64,7 @@ if [[ -f "${TMP_DIR}/lumend" ]]; then
   CANDIDATE="${TMP_DIR}/lumend"
 else
   # Some archives ship the binary under a platform-specific name
-  # (e.g. linux-amd64-v1.4.0). Prefer any executable that looks
+  # (e.g. linux-amd64-v.0). Prefer any executable that looks
   # like a lumend binary, otherwise fall back to the first executable.
   CANDIDATE="$(find "${TMP_DIR}" -maxdepth 2 -type f -perm -u+x \( -name 'lumend' -o -name '*lumend*' \) -print -quit || true)"
   if [[ -z "${CANDIDATE}" ]]; then
