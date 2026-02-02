@@ -7,9 +7,9 @@ set -euo pipefail
 FROM="${FROM:-validator}"
 HOME_DIR="${HOME_DIR:-$HOME/.lumen}"
 BIN="${BIN:-lumend}"
-KEYRING="${KEYRING:-test}"
-CHAIN_ID="${CHAIN_ID:-lumen}"
-RPC="${RPC:-http://127.0.0.1:26657}"
+KEYRING="${KEYRING:-os}"
+CHAIN_ID="${CHAIN_ID:-lumen-testnet-1}"
+RPC="${RPC:-https://testnet-rpc.lumen.chaintools.tech:443}"
 FEES="${FEES:-0ulmn}"
 
 AMOUNT=""
