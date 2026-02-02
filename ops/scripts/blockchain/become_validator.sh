@@ -4,7 +4,7 @@ set -euo pipefail
 HOME_DIR="${HOME_DIR:-$HOME/.lumen}"
 BIN="${BIN:-lumend}"
 KEYRING="${KEYRING:-test}"
-CHAIN_ID="${CHAIN_ID:-lumen}"
+CHAIN_ID="${CHAIN_ID:-lumen-testnet-1}"
 RPC="${RPC:-http://127.0.0.1:26657}"
 FEES="${FEES:-0ulmn}"
 GAS_ADJ="${GAS_ADJ:-1.5}"
