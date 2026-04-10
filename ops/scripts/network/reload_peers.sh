@@ -65,6 +65,27 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 PEERS_FILE="$REPO_ROOT/config/peers.txt"
 CFG_TOML="$HOME_DIR/config/config.toml"
 
+normalize_peer_list() {
+  local file="$1"
+  awk '
+    BEGIN { list = "" }
+    {
+      gsub(/\r/, "")
+      gsub(/,/, "\n", $0)
+      n = split($0, parts, /\n/)
+      for (i = 1; i <= n; i++) {
+        entry = parts[i]
+        gsub(/^[ \t]+|[ \t]+$/, "", entry)
+        if (entry != "") {
+          if (list == "") { list = entry }
+          else { list = list "," entry }
+        }
+      }
+    }
+    END { print list }
+  ' "$file"
+}
+
 if [[ ! -f "$PEERS_FILE" ]]; then
   echo "❌ Missing peers file: $PEERS_FILE"
   exit 1
@@ -81,8 +102,7 @@ if grep -Eq '^[[:space:]]*seed_mode[[:space:]]*=[[:space:]]*true' "$CFG_TOML"; t
   exit 0
 fi
 
-RAW="$(head -n1 "$PEERS_FILE" | tr -d '\r\n ')"
-PEERS="$RAW"
+PEERS="$(normalize_peer_list "$PEERS_FILE")"
 
 printf '%s\n' "Reloading persistent_peers from $PEERS_FILE"
 echo "  → \"$PEERS\""

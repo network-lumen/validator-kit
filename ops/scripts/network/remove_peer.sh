@@ -73,12 +73,33 @@ done
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 PEERS_FILE="$REPO_ROOT/config/peers.txt"
 
+normalize_peer_list() {
+  local file="$1"
+  awk '
+    BEGIN { list = "" }
+    {
+      gsub(/\r/, "")
+      gsub(/,/, "\n", $0)
+      n = split($0, parts, /\n/)
+      for (i = 1; i <= n; i++) {
+        entry = parts[i]
+        gsub(/^[ \t]+|[ \t]+$/, "", entry)
+        if (entry != "") {
+          if (list == "") { list = entry }
+          else { list = list "," entry }
+        }
+      }
+    }
+    END { print list }
+  ' "$file"
+}
+
 if [[ ! -f "$PEERS_FILE" ]]; then
   echo "❌ No peers file at $PEERS_FILE"
   exit 1
 fi
 
-RAW="$(head -n1 "$PEERS_FILE" | tr -d '\r\n ')"
+RAW="$(normalize_peer_list "$PEERS_FILE")"
 
 if [[ -z "$RAW" ]]; then
   echo "ℹ peers.txt is empty, nothing to remove."

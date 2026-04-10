@@ -55,6 +55,27 @@ PEERS_FILE="$REPO_ROOT/config/peers.txt"
 CFG_FULL="$REPO_ROOT/config/fullnode"
 CFG_RPC="$REPO_ROOT/config/rpc"
 
+normalize_list_file() {
+  local file="$1"
+  awk '
+    BEGIN { list = "" }
+    {
+      gsub(/\r/, "")
+      gsub(/,/, "\n", $0)
+      n = split($0, parts, /\n/)
+      for (i = 1; i <= n; i++) {
+        entry = parts[i]
+        gsub(/^[ \t]+|[ \t]+$/, "", entry)
+        if (entry != "") {
+          if (list == "") { list = entry }
+          else { list = list "," entry }
+        }
+      }
+    }
+    END { print list }
+  ' "$file"
+}
+
 # -----------------------------------------------------------------------------
 # Check binaries (local)
 # -----------------------------------------------------------------------------
@@ -77,25 +98,11 @@ fi
 
 [[ -f "$SEEDS_FILE" ]] || { echo "❌ Missing $SEEDS_FILE"; exit 1; }
 
-# Collect all non-empty, trimmed lines from seeds.txt and join as a comma-separated list.
-SEEDS="$(
-  awk '
-    BEGIN { seeds = "" }
-    {
-      gsub(/\r/, "")                          # strip CR
-      gsub(/^[ \t]+|[ \t]+$/, "", $0)         # trim
-      if ($0 != "") {
-        if (seeds == "") { seeds = $0 }
-        else { seeds = seeds "," $0 }
-      }
-    }
-    END { print seeds }
-  ' "$SEEDS_FILE"
-)"
+SEEDS="$(normalize_list_file "$SEEDS_FILE")"
 
 PEERS=""
 if [[ -f "$PEERS_FILE" ]]; then
-  PEERS="$(head -n1 "$PEERS_FILE" | tr -d '\r\n')"
+  PEERS="$(normalize_list_file "$PEERS_FILE")"
 fi
 
 # -----------------------------------------------------------------------------

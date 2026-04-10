@@ -75,6 +75,27 @@ PEERS_FILE="$REPO_ROOT/config/peers.txt"
 
 mkdir -p "$(dirname "$PEERS_FILE")"
 
+normalize_peer_list() {
+  local file="$1"
+  awk '
+    BEGIN { list = "" }
+    {
+      gsub(/\r/, "")
+      gsub(/,/, "\n", $0)
+      n = split($0, parts, /\n/)
+      for (i = 1; i <= n; i++) {
+        entry = parts[i]
+        gsub(/^[ \t]+|[ \t]+$/, "", entry)
+        if (entry != "") {
+          if (list == "") { list = entry }
+          else { list = list "," entry }
+        }
+      }
+    }
+    END { print list }
+  ' "$file"
+}
+
 # -----------------------------------------------------------------------------
 # Peer input
 # -----------------------------------------------------------------------------
@@ -92,12 +113,13 @@ if [[ "$PEER" != *@*:* ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Load existing peers from config/peers.txt (first line = CSV string)
+# Load existing peers from config/peers.txt and normalize both multiline
+# and comma-delimited formats into one CSV string.
 # -----------------------------------------------------------------------------
 
 EXISTING=""
 if [[ -f "$PEERS_FILE" ]]; then
-  EXISTING="$(head -n1 "$PEERS_FILE" | tr -d '\r\n')"
+  EXISTING="$(normalize_peer_list "$PEERS_FILE")"
 fi
 
 if [[ -n "$EXISTING" ]]; then
