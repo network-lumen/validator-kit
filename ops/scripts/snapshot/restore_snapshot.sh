@@ -8,6 +8,7 @@ echo ""
 HOME_DIR="${1:-/root/.lumen}"
 SNAP_DIR="${2:-/root/snapshots}"
 SERVICE_NAME="${SERVICE_NAME:-lumend}"
+HOME_OWNER_GROUP="$(stat -c '%u:%g' "$HOME_DIR" 2>/dev/null || true)"
 
 echo "[i] HOME_DIR  = $HOME_DIR"
 echo "[i] SNAP_DIR  = $SNAP_DIR"
@@ -174,7 +175,12 @@ EOF
 
 echo ""
 echo "[9] Permissions..."
-chown -R root:root "$HOME_DIR"
+if [[ -n "$HOME_OWNER_GROUP" ]]; then
+    chown -R "$HOME_OWNER_GROUP" "$HOME_DIR"
+    echo "[OK] Restored ownership to $HOME_OWNER_GROUP"
+else
+    echo "[WARN] Could not determine original ownership; leaving current ownership unchanged"
+fi
 
 echo ""
 echo "[10] Restarting service..."

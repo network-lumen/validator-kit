@@ -29,7 +29,8 @@ Options:
                   Default: \$HOME/.lumen (or LUMEN_HOME if set).
   --rpc URL       Trusted RPC endpoint to use for state sync
                   (e.g. http://100.64.0.1:26657).
-                  If omitted, the state_sync helper will prompt.
+                  If omitted, state sync is skipped and the node
+                  bootstraps via seeds + PEX.
   --public-api    Use the RPC/API profile (config/rpc) instead of the
                   default fullnode profile (config/fullnode).
 
@@ -124,7 +125,7 @@ fi
 echo "=== Lumen ${ROLE_LABEL} init ==="
 echo "Moniker   : ${MONIKER}"
 echo "Home      : ${NODE_HOME}"
-echo "RPC (opt) : ${RPC_URL:-<prompt in state_sync.sh>}"
+echo "RPC (opt) : ${RPC_URL:-<state sync disabled>}"
 echo
 
 # As with the validator init, we never auto-delete an existing home.
@@ -425,11 +426,7 @@ fi
 echo
 echo "=== Node init complete ==="
 echo "Home directory : ${NODE_HOME}"
-if [[ -d "${BACKUP_DIR}" ]]; then
-  echo "Local backup   : ${BACKUP_DIR}"
-else
-  echo "Local backup   : <none created by init_node.sh>"
-fi
+echo "Local backup   : <none created by init_node.sh>"
 echo
 echo "You can inspect the service with:"
 echo "  sudo systemctl status lumend"
