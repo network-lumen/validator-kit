@@ -30,6 +30,7 @@ separate, explicit step.
 ## Documentation
 
 - [Join and synchronize a node](docs/guides/join-and-sync.md)
+- [Manual node setup](docs/guides/manual-node-setup.md)
 - [Become a validator and stake](docs/guides/become-validator.md)
 - [Key separation and hardening](docs/concepts/validator-key-hardening.md)
 - [Seeds and peer discovery](docs/concepts/seeds.md)

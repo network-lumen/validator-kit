@@ -3,6 +3,7 @@
 ## Operator guides
 
 - [Join and synchronize a node](guides/join-and-sync.md)
+- [Manual node setup](guides/manual-node-setup.md)
 - [Become a validator and stake](guides/become-validator.md)
 
 ## Concepts
