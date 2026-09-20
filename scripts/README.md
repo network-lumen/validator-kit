@@ -1,7 +1,7 @@
 # Operator scripts
 
 Run these commands from the repository root unless a script says otherwise.
-The root `./join.sh` forwards to `scripts/join.sh`; both call `init_node.sh`.
+Node setup scripts call `init_node.sh` through the `scripts/join.sh` entrypoint.
 The current node setup scripts use the files in `networks/mainnet/`.
 
 | Area | Commands |

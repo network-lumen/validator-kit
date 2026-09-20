@@ -19,7 +19,7 @@ Testnet and devnet are not configured in this repository yet.
 From the repository root on a Linux host:
 
 ```bash
-./join.sh <moniker> [--rpc http://trusted-rpc:26657]
+scripts/join.sh <moniker> [--rpc http://trusted-rpc:26657]
 ```
 
 This creates a **non-validator** full node. Use `--public-api` only when you
@@ -46,5 +46,3 @@ separate, explicit step.
 | [`networks/`](networks/README.md) | Network genesis, seeds, and persistent peers |
 | [`ops/`](ops/README.md) | Headscale and monitoring deployments |
 | `bin/` | Local `lumend` binary downloaded by the installer |
-
-The root `join.sh` is a compatibility entrypoint for `scripts/join.sh`.

@@ -8,7 +8,7 @@ service and creates a **non-validator** node.
 ## Standard join
 
 ```bash
-./join.sh <moniker>
+scripts/join.sh <moniker>
 ```
 
 Without an RPC endpoint, the node synchronizes using seeds, peer exchange, and
@@ -26,7 +26,7 @@ If you have a trusted RPC endpoint and the network serves state snapshots,
 configure state sync during the initial join:
 
 ```bash
-./join.sh <moniker> --rpc http://trusted-rpc:26657
+scripts/join.sh <moniker> --rpc http://trusted-rpc:26657
 ```
 
 The helper writes the trusted height and hash before installing the service.
