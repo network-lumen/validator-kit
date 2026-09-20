@@ -4,11 +4,11 @@ set -euo pipefail
 ###############################################
 # Lumen — Join an existing network (full/sentry/RPC)
 # Fully offline — config & genesis come from repo
-# Seeds/persistent peers taken from config/*.txt
+# Seeds/persistent peers taken from networks/mainnet/*.txt
 #
 # This helper only creates a non-validator node (fullnode / sentry / RPC).
 # Becoming a validator (PQC + create-validator + staking) is handled by the
-# dedicated blockchain scripts under ops/scripts/blockchain/.
+# dedicated blockchain scripts under scripts/blockchain/.
 ###############################################
 
 # --- Arguments ---------------------------------------------------------------
@@ -45,13 +45,15 @@ fi
 # Repo paths
 # -----------------------------------------------------------------------------
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+source "$SCRIPT_DIR/list_file.sh"
 
 BIN="$REPO_ROOT/bin/lumend"
 DEPS="$REPO_ROOT/deps"
-GENESIS_SRC="$REPO_ROOT/config/genesis.json"
-SEEDS_FILE="$REPO_ROOT/config/seeds.txt"
-PEERS_FILE="$REPO_ROOT/config/peers.txt"
+GENESIS_SRC="$REPO_ROOT/networks/mainnet/genesis.json"
+SEEDS_FILE="$REPO_ROOT/networks/mainnet/seeds.txt"
+PEERS_FILE="$REPO_ROOT/networks/mainnet/peers.txt"
 CFG_FULL="$REPO_ROOT/config/fullnode"
 CFG_RPC="$REPO_ROOT/config/rpc"
 
@@ -72,30 +74,16 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# Load seeds & peers from config/
+# Load seeds & peers from networks/mainnet/
 # -----------------------------------------------------------------------------
 
 [[ -f "$SEEDS_FILE" ]] || { echo "❌ Missing $SEEDS_FILE"; exit 1; }
 
-# Collect all non-empty, trimmed lines from seeds.txt and join as a comma-separated list.
-SEEDS="$(
-  awk '
-    BEGIN { seeds = "" }
-    {
-      gsub(/\r/, "")                          # strip CR
-      gsub(/^[ \t]+|[ \t]+$/, "", $0)         # trim
-      if ($0 != "") {
-        if (seeds == "") { seeds = $0 }
-        else { seeds = seeds "," $0 }
-      }
-    }
-    END { print seeds }
-  ' "$SEEDS_FILE"
-)"
+SEEDS="$(network_list_csv "$SEEDS_FILE")"
 
 PEERS=""
 if [[ -f "$PEERS_FILE" ]]; then
-  PEERS="$(head -n1 "$PEERS_FILE" | tr -d '\r\n')"
+  PEERS="$(network_list_csv "$PEERS_FILE")"
 fi
 
 # -----------------------------------------------------------------------------

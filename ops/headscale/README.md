@@ -13,7 +13,7 @@ From the repo root, on the machine where your Headscale server will run
 and as the Headscale operator account:
 
 ```bash
-cd deploy/headscale
+cd ops/headscale
 ./run/up.sh                 # starts Headscale via docker-compose
 ./run/init.sh               # creates auth keys (1 validator, 1 sentry)
 ```
@@ -27,13 +27,13 @@ cp .env.example .env
 
 The compose setup will:
 - start a `headscale` container
-- mount config from `deploy/headscale/config/config.yaml`
+- mount config from `ops/headscale/config/config.yaml`
 - store database and keys in a Docker volume (`headscale-data`)
 
 To stop Headscale:
 
 ```bash
-cd deploy/headscale
+cd ops/headscale
 ./run/down.sh
 ```
 
@@ -63,7 +63,7 @@ trust it explicitly on your nodes.
 On the Headscale host (your control-plane machine), from the repo root:
 
 ```bash
-cd deploy/headscale
+cd ops/headscale
 mkdir -p proxy/certs
 openssl req -x509 -nodes -newkey rsa:4096 -days 365 \
   -subj "/CN=headscale.example.com" \
@@ -80,7 +80,7 @@ that `tailscale up --login-server https://headscale.example.com` does not fail w
 `certificate signed by unknown authority`. On Debian/Ubuntu-like systems:
 
 ```bash
-scp deploy/headscale/proxy/certs/fullchain.pem user@node:/tmp/headscale-ca.pem
+scp ops/headscale/proxy/certs/fullchain.pem user@node:/tmp/headscale-ca.pem
 ssh user@node
 sudo cp /tmp/headscale-ca.pem /usr/local/share/ca-certificates/headscale.crt
 sudo update-ca-certificates
@@ -97,11 +97,11 @@ in the Docker volume `headscale-data`. You should back this up after you have
 finished configuring your network, and whenever you make important changes
 (adding/removing nodes, changing ACLs).
 
-From `deploy/headscale` you can take a snapshot into a directory of your choice
+From `ops/headscale` you can take a snapshot into a directory of your choice
 (ideally an offline USB key or an encrypted folder):
 
 ```bash
-cd deploy/headscale
+cd ops/headscale
 ./run/backup.sh                    # saves into ./backups/
 ./run/backup.sh /media/usb/lumen   # custom target folder
 ```
@@ -113,7 +113,7 @@ This stops Headscale for a few seconds, tars the volume into a file like:
 To restore on the same machine or a new one:
 
 ```bash
-cd deploy/headscale
+cd ops/headscale
 ./run/restore.sh /media/usb/lumen/headscale_state_YYYYMMDD_HHMMSS.tar.gz
 ```
 
@@ -136,4 +136,4 @@ This will:
 - generate one auth key for the validator
 - generate 2 auth keys for sentry nodes
 
-All keys are written to a timestamped file in `deploy/headscale/`.
+All keys are written to a timestamped file in `ops/headscale/`.

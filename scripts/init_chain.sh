@@ -79,15 +79,15 @@ if [[ -z "$MONIKER" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 DEFAULT_HOME="${HOME}/.lumen"
 NODE_HOME="${LUMEN_HOME_OVERRIDE:-$DEFAULT_HOME}"
 DEFAULT_LUMEND_BIN="${REPO_ROOT}/bin/lumend"
 LUMEND_BIN_PATH="${LUMEND_BIN:-${LUMEN_TARGET:-$DEFAULT_LUMEND_BIN}}"
-DOWNLOAD_SCRIPT="${REPO_ROOT}/ops/scripts/install/download_lumend.sh"
-BOOTSTRAP_SCRIPT="${REPO_ROOT}/ops/scripts/network/bootstrap.sh"
-SERVICE_SCRIPT="${REPO_ROOT}/ops/scripts/install/lumend_service.sh"
+DOWNLOAD_SCRIPT="${REPO_ROOT}/scripts/install/download_lumend.sh"
+BOOTSTRAP_SCRIPT="${REPO_ROOT}/scripts/network/bootstrap.sh"
+SERVICE_SCRIPT="${REPO_ROOT}/scripts/install/lumend_service.sh"
 
 echo "=== Lumen chain initialisation (new network, block 0) ==="
 echo "Moniker : ${MONIKER}"
@@ -156,7 +156,7 @@ echo
 echo "[2/4] Bootstrapping initial validator from repo config"
 echo "       (scripts/network/bootstrap.sh ${MONIKER})"
 # bootstrap.sh:
-#   - reads chain-id and genesis from config/genesis.json
+#   - reads chain-id and genesis from networks/mainnet/genesis.json
 #   - uses config/validator/* as templates
 #   - generates validator + PQC keys
 #   - creates a .lumen home and a first-node.bak backup

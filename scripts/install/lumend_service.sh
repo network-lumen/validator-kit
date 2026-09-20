@@ -32,7 +32,7 @@ HOME_DIR="${1:-${DEFAULT_HOME}/.lumen}"
 RUN_USER="${2:-${DEFAULT_USER}}"
 # Try to suggest a reasonable default for the lumend binary:
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REPO_BIN="${REPO_ROOT}/bin/lumend"
 
 FOUND_BIN=""

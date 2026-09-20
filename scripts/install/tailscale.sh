@@ -6,7 +6,7 @@ set -euo pipefail
 # - Enables and starts the tailscaled systemd service
 # - Optionally runs `tailscale up` with your Headscale URL and auth key
 #
-# Usage (from deploy/):
+# Usage (from the repository root):
 #   sudo scripts/install/tailscale.sh \
 #     --login-server https://headscale.example.com \
 #     --authkey tskey-xxxxxxxx \

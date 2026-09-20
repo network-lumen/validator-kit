@@ -9,12 +9,11 @@ set -euo pipefail
 #
 #   1. Ensure a lumend binary exists.
 #   2. Join the network (creates \$HOME/.lumen with config + keys).
-#   3. Enable state sync against a trusted RPC endpoint.
+#   3. Optionally enable state sync against a trusted RPC endpoint.
 #   4. Only then install and start the systemd service.
 #
-# The idea is that the node never starts before state sync is
-# configured, so it does not waste time replaying from genesis or
-# accidentally trust the wrong height/hash.
+# When an RPC endpoint is provided, the node does not start before state
+# sync is configured. Without one, it replays blocks from peers.
 #######################################################################
 
 usage() {
@@ -29,7 +28,8 @@ Options:
                   Default: \$HOME/.lumen (or LUMEN_HOME if set).
   --rpc URL       Trusted RPC endpoint to use for state sync
                   (e.g. http://100.64.0.1:26657).
-                  If omitted, the state_sync helper will prompt.
+                  If omitted, state sync is skipped and the node
+                  synchronizes using seeds and peer exchange.
   --public-api    Use the RPC/API profile (config/rpc) instead of the
                   default fullnode profile (config/fullnode).
 
@@ -40,9 +40,8 @@ Safety guarantees:
   - Refuses to run if the resolved node home already exists (no
     destructive resets; use scripts/network/join.sh --force if you
     know what you're doing).
-  - Forces the order: join -> state sync -> systemd service.
-  - Verifies that state sync is enabled in config.toml before starting
-    the service.
+  - Forces the order: join -> optional state sync -> systemd service.
+  - Verifies state sync before service start when --rpc is provided.
 
 Advanced users can call the underlying scripts directly:
   - scripts/network/join.sh
@@ -103,18 +102,18 @@ if [[ "${SEED_MODE}" -eq 1 && "${PUBLIC_API}" -eq 1 ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 DEFAULT_HOME="${HOME}/.lumen"
 NODE_HOME="${LUMEN_HOME_OVERRIDE:-$DEFAULT_HOME}"
 DEFAULT_LUMEND_BIN="${REPO_ROOT}/bin/lumend"
 LUMEND_BIN_PATH="${LUMEND_BIN:-${LUMEN_TARGET:-$DEFAULT_LUMEND_BIN}}"
-DOWNLOAD_SCRIPT="${REPO_ROOT}/ops/scripts/install/download_lumend.sh"
-JOIN_SCRIPT="${REPO_ROOT}/ops/scripts/network/join.sh"
-STATE_SYNC_SCRIPT="${REPO_ROOT}/ops/scripts/network/state_sync.sh"
-SERVICE_SCRIPT="${REPO_ROOT}/ops/scripts/install/lumend_service.sh"
-ADD_PEER_SCRIPT="${REPO_ROOT}/ops/scripts/network/add_peer.sh"
-RELOAD_PEERS_SCRIPT="${REPO_ROOT}/ops/scripts/network/reload_peers.sh"
+DOWNLOAD_SCRIPT="${REPO_ROOT}/scripts/install/download_lumend.sh"
+JOIN_SCRIPT="${REPO_ROOT}/scripts/network/join.sh"
+STATE_SYNC_SCRIPT="${REPO_ROOT}/scripts/network/state_sync.sh"
+SERVICE_SCRIPT="${REPO_ROOT}/scripts/install/lumend_service.sh"
+ADD_PEER_SCRIPT="${REPO_ROOT}/scripts/network/add_peer.sh"
+RELOAD_PEERS_SCRIPT="${REPO_ROOT}/scripts/network/reload_peers.sh"
 
 ROLE_LABEL="fullnode / sentry"
 if [[ "${SEED_MODE}" -eq 1 ]]; then
@@ -124,7 +123,7 @@ fi
 echo "=== Lumen ${ROLE_LABEL} init ==="
 echo "Moniker   : ${MONIKER}"
 echo "Home      : ${NODE_HOME}"
-echo "RPC (opt) : ${RPC_URL:-<prompt in state_sync.sh>}"
+echo "RPC (opt) : ${RPC_URL:-<state sync disabled>}"
 echo
 
 # As with the validator init, we never auto-delete an existing home.
@@ -217,7 +216,7 @@ fi
 HOME="${HELPER_HOME}" "${JOIN_SCRIPT}" "${MONIKER}" "${JOIN_ARGS[@]}"
 
 echo
-echo "[2b/5] Reinforcing peers from config/peers.txt (post-join)"
+echo "[2b/5] Reinforcing peers from networks/mainnet/peers.txt (post-join)"
 
 if [[ "${SEED_MODE}" -eq 1 ]]; then
   echo "→ Skipping persistent_peers reload (seed mode)"
@@ -304,7 +303,7 @@ if [[ "${SEED_MODE}" -ne 1 && -n "${RPC_URL}" && -n "${ADD_PEER_SCRIPT}" ]]; the
         "${ADD_PEER_SCRIPT}" --peer "${RPC_PEER}" --home "${NODE_HOME}" --no-restart
 
         if [[ -n "${RELOAD_PEERS_SCRIPT}" ]]; then
-          echo "→ Reloading persistent_peers into ${NODE_HOME} from config/peers.txt"
+          echo "→ Reloading persistent_peers into ${NODE_HOME} from networks/mainnet/peers.txt"
           "${RELOAD_PEERS_SCRIPT}" --home "${NODE_HOME}" --no-restart
         fi
       fi
@@ -317,7 +316,7 @@ if [[ "${SEED_MODE}" -eq 1 ]]; then
   echo "→ Skipping persistent_peers reload (seed mode)"
 elif [[ -n "${RELOAD_PEERS_SCRIPT}" ]]; then
   echo
-  echo "→ Reinforcing peers from config/peers.txt (post-RPC injection)"
+  echo "→ Reinforcing peers from networks/mainnet/peers.txt (post-RPC injection)"
   "${RELOAD_PEERS_SCRIPT}" --home "${NODE_HOME}" --no-restart
 fi
 
@@ -425,14 +424,14 @@ fi
 echo
 echo "=== Node init complete ==="
 echo "Home directory : ${NODE_HOME}"
-if [[ -d "${BACKUP_DIR}" ]]; then
-  echo "Local backup   : ${BACKUP_DIR}"
-else
-  echo "Local backup   : <none created by init_node.sh>"
-fi
+echo "Local backup   : <none created by init_node.sh>"
 echo
 echo "You can inspect the service with:"
 echo "  sudo systemctl status lumend"
 echo
-echo "Node started with state sync enabled."
-echo "It will fast-forward to the configured trust height before continuing with live blocks."
+if [[ -n "${RPC_URL}" ]]; then
+  echo "Node started with state sync enabled."
+  echo "It will fast-forward to the configured trust height before continuing with live blocks."
+else
+  echo "Node started without state sync; it will synchronize from peers."
+fi

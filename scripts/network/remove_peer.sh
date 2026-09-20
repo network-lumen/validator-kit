@@ -2,15 +2,15 @@
 set -euo pipefail
 
 ############################################################
-# Lumen — Append a persistent peer to the config
+# Lumen — Remove a persistent peer from the config
 #
-# This helper keeps the repo's source-of-truth in sync
-# (`config/peers.txt`) and, if a local node home exists,
+# This helper edits the repo's source-of-truth
+# (`networks/mainnet/peers.txt`) and, if a local node home exists,
 # updates `$HOME/.lumen/config/config.toml` accordingly.
 #
 # You can either pass the peer on the CLI:
-#   add_peer.sh --peer "nodeid@100.64.0.1:26656"
-# or let the script prompt you interactively.
+#   remove_peer.sh --peer "nodeid@100.64.0.1:26656"
+# or let the script show the current list and pick one.
 ############################################################
 
 usage() {
@@ -19,7 +19,7 @@ Usage: $(basename "$0") [--peer <id@host:port>] [--home DIR] [--service NAME] [-
 
 Options:
   --peer      CometBFT peer string, e.g. "abcd1234@100.64.0.1:26656".
-              If omitted, you will be prompted interactively.
+              If omitted, you will be prompted to select from the current list.
   --home      Node home directory (default: \$HOME/.lumen).
   --service   systemd service name to restart (default: lumend).
   --no-restart
@@ -70,54 +70,79 @@ done
 # Resolve repo paths
 # -----------------------------------------------------------------------------
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PEERS_FILE="$REPO_ROOT/config/peers.txt"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+source "$SCRIPT_DIR/list_file.sh"
+PEERS_FILE="$REPO_ROOT/networks/mainnet/peers.txt"
 
-mkdir -p "$(dirname "$PEERS_FILE")"
-
-# -----------------------------------------------------------------------------
-# Peer input
-# -----------------------------------------------------------------------------
-
-if [[ -z "$PEER" ]]; then
-  read -rp "CometBFT peer (id@host:port): " PEER
-fi
-
-# Trim whitespace / newlines
-PEER="$(echo -n "$PEER" | tr -d '[:space:]')"
-
-if [[ "$PEER" != *@*:* ]]; then
-  echo "❌ Invalid peer format. Expected id@host:port"
+if [[ ! -f "$PEERS_FILE" ]]; then
+  echo "❌ No peers file at $PEERS_FILE"
   exit 1
 fi
 
-# -----------------------------------------------------------------------------
-# Load existing peers from config/peers.txt (first line = CSV string)
-# -----------------------------------------------------------------------------
+RAW="$(network_list_csv "$PEERS_FILE")"
 
-EXISTING=""
-if [[ -f "$PEERS_FILE" ]]; then
-  EXISTING="$(head -n1 "$PEERS_FILE" | tr -d '\r\n')"
+if [[ -z "$RAW" ]]; then
+  echo "ℹ peers.txt is empty, nothing to remove."
+  exit 0
 fi
 
-if [[ -n "$EXISTING" ]]; then
-  # Normalise to a comma-delimited list with no spaces
-  EXISTING="$(echo -n "$EXISTING" | tr -d ' ')"
+IFS=',' read -r -a PEERS_ARR <<<"$RAW"
+
+if [[ "${#PEERS_ARR[@]}" -eq 0 ]]; then
+  echo "ℹ No peers found in $PEERS_FILE."
+  exit 0
 fi
 
-NEW="$EXISTING"
+# -----------------------------------------------------------------------------
+# Interactive selection if no --peer
+# -----------------------------------------------------------------------------
 
-if [[ -z "$EXISTING" ]]; then
-  NEW="$PEER"
-elif [[ ",$EXISTING," == *",$PEER,"* ]]; then
-  echo "Peer already present in $PEERS_FILE"
+if [[ -z "$PEER" ]]; then
+  echo "Current peers:"
+  for i in "${!PEERS_ARR[@]}"; do
+    printf "  [%d] %s\n" "$((i+1))" "${PEERS_ARR[$i]}"
+  done
+  echo
+  read -rp "Select index to remove: " IDX
+  if ! [[ "$IDX" =~ ^[0-9]+$ ]] || (( IDX < 1 || IDX > ${#PEERS_ARR[@]} )); then
+    echo "❌ Invalid index"
+    exit 1
+  fi
+  PEER="${PEERS_ARR[$((IDX-1))]}"
 else
-  NEW="$EXISTING,$PEER"
+  PEER="$(echo -n "$PEER" | tr -d '[:space:]')"
 fi
 
-printf '%s\n' "$NEW" >"$PEERS_FILE"
+# -----------------------------------------------------------------------------
+# Build new list without the peer
+# -----------------------------------------------------------------------------
+
+NEW_LIST=()
+FOUND=0
+for p in "${PEERS_ARR[@]}"; do
+  if [[ "$p" == "$PEER" ]]; then
+    FOUND=1
+    continue
+  fi
+  NEW_LIST+=("$p")
+done
+
+if [[ "$FOUND" -eq 0 ]]; then
+  echo "ℹ Peer not found in $PEERS_FILE: $PEER"
+  exit 0
+fi
+
+NEW_JOINED=""
+if [[ "${#NEW_LIST[@]}" -gt 0 ]]; then
+  NEW_JOINED="${NEW_LIST[*]}"
+  # Replace spaces between elements with commas
+  NEW_JOINED="${NEW_JOINED// /,}"
+fi
+
+printf '%s\n' "$NEW_JOINED" >"$PEERS_FILE"
 echo "✔ Updated $PEERS_FILE"
-echo "   persistent_peers = \"$NEW\""
+echo "   persistent_peers = \"${NEW_JOINED}\""
 
 # -----------------------------------------------------------------------------
 # Update local node config, if present (non-seed only)
@@ -133,30 +158,8 @@ if [[ -f "$CFG_TOML" ]]; then
   if [[ "$IS_SEED_MODE" -eq 1 ]]; then
     echo "Seed node detected: peers.txt updated, local config untouched"
   else
-    # Use sed to replace the persistent_peers line
-    sed -i "s|^persistent_peers *=.*|persistent_peers = \"$NEW\"|" "$CFG_TOML"
+    sed -i "s|^persistent_peers *=.*|persistent_peers = \"${NEW_JOINED}\"|" "$CFG_TOML"
     echo "✔ Updated $CFG_TOML"
-
-    # Also ensure max_num_inbound_peers is at least the number of peers.
-    # This is mainly relevant on the validator, where defaults may be 0.
-    PEER_COUNT=0
-    IFS=',' read -r -a PEER_ARR <<<"$NEW"
-    for _ in "${PEER_ARR[@]}"; do
-      if [[ -n "${_}" ]]; then
-        PEER_COUNT=$((PEER_COUNT + 1))
-      fi
-    done
-
-    if grep -q '^max_num_inbound_peers' "$CFG_TOML"; then
-      CURRENT_INBOUND=$(grep '^max_num_inbound_peers' "$CFG_TOML" | sed 's/[^0-9]//g' || echo "0")
-      if [[ -z "$CURRENT_INBOUND" ]]; then
-        CURRENT_INBOUND=0
-      fi
-      if (( PEER_COUNT > 0 && CURRENT_INBOUND < PEER_COUNT )); then
-        sed -i "s|^max_num_inbound_peers *=.*|max_num_inbound_peers = $PEER_COUNT|" "$CFG_TOML"
-        echo "✔ Bumped max_num_inbound_peers to $PEER_COUNT in $CFG_TOML"
-      fi
-    fi
   fi
 else
   echo "ℹ No local config at $CFG_TOML (skipping node home update)"
@@ -185,4 +188,4 @@ if [[ "$RESTART" -eq 1 && "$IS_SEED_MODE" -ne 1 ]] && command -v systemctl >/dev
 fi
 
 echo "Done. Current peers string:"
-echo "  $NEW"
+echo "  ${NEW_JOINED}"

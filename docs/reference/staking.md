@@ -1,4 +1,7 @@
-This document explains how validator voting power works today and how it is expected to evolve.
+# Staking and voting power
+
+This document describes the project's staking roadmap. Network parameters
+can change through governance; verify current values on chain before acting.
 
 ───────────
 

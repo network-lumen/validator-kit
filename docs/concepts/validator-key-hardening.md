@@ -156,10 +156,11 @@ Everything else is optional and often harmful.
 
 Lumen provides a reference script to apply this hardening model safely.
 
-After **properly backing up all account and PQC keys**, operators may use:
+After **properly backing up all account and PQC keys**, operators may run
+the following from the repository root:
 
-```
-./validator-kit/ops/scripts/network/scrub_validator_keys.sh
+```bash
+scripts/network/scrub_validator_keys.sh
 ```
 
 This script is designed to:
@@ -186,4 +187,3 @@ When executed correctly, the validator host:
 The goal is to harden validator hosts by enforcing a strict separation between:
 - **consensus responsibilities**
 - **transactional authority**
-

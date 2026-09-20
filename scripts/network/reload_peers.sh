@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ############################################################
-# Lumen — Reload persistent_peers from config/peers.txt
+# Lumen — Reload persistent_peers from networks/mainnet/peers.txt
 #
-# Reads the repo source-of-truth (config/peers.txt), rewrites
+# Reads the repo source-of-truth (networks/mainnet/peers.txt), rewrites
 # the local node's config.toml persistent_peers line, and can
 # optionally restart the lumend systemd service.
 #
@@ -61,8 +61,10 @@ done
 # Resolve paths
 # -----------------------------------------------------------------------------
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PEERS_FILE="$REPO_ROOT/config/peers.txt"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+source "$SCRIPT_DIR/list_file.sh"
+PEERS_FILE="$REPO_ROOT/networks/mainnet/peers.txt"
 CFG_TOML="$HOME_DIR/config/config.toml"
 
 if [[ ! -f "$PEERS_FILE" ]]; then
@@ -81,8 +83,7 @@ if grep -Eq '^[[:space:]]*seed_mode[[:space:]]*=[[:space:]]*true' "$CFG_TOML"; t
   exit 0
 fi
 
-RAW="$(head -n1 "$PEERS_FILE" | tr -d '\r\n ')"
-PEERS="$RAW"
+PEERS="$(network_list_csv "$PEERS_FILE")"
 
 printf '%s\n' "Reloading persistent_peers from $PEERS_FILE"
 echo "  → \"$PEERS\""

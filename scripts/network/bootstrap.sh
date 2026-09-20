@@ -4,7 +4,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Lumen – Validator Bootstrap (non-interactive)
 # - Uses ./bin/lumend
-# - Loads chain-id from config/genesis.json
+# - Loads chain-id from networks/mainnet/genesis.json
 # - Injects config/validator/*.toml
 # - Generates validator key + PQC key
 # - Creates gentx and collects it
@@ -12,11 +12,11 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 LUMEN_BIN="${REPO_ROOT}/bin/lumend"
 VALIDATOR_CFG_DIR="${REPO_ROOT}/config/validator"
-GENESIS_FILE_REPO="${REPO_ROOT}/config/genesis.json"
+GENESIS_FILE_REPO="${REPO_ROOT}/networks/mainnet/genesis.json"
 
 HOME_DIR="$HOME/.lumen"
 KEYRING="test"
@@ -52,13 +52,13 @@ if [[ ! -d "$VALIDATOR_CFG_DIR" ]]; then
 fi
 
 if [[ ! -f "$GENESIS_FILE_REPO" ]]; then
-  echo "ERROR: config/genesis.json is missing"
+  echo "ERROR: networks/mainnet/genesis.json is missing"
   exit 1
 fi
 
 CHAIN_ID="$(jq -r '.chain_id' "$GENESIS_FILE_REPO")"
 if [[ -z "$CHAIN_ID" || "$CHAIN_ID" == "null" ]]; then
-  echo "ERROR: chain_id is missing in config/genesis.json"
+  echo "ERROR: chain_id is missing in networks/mainnet/genesis.json"
   exit 1
 fi
 

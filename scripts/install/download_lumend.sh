@@ -4,21 +4,21 @@ set -euo pipefail
 # download_lumend.sh
 # -------------------
 # Small helper to fetch a lumend binary from the official GitHub releases
-# and place it under deploy/bin/lumend (or another target you provide).
+# and place it under bin/lumend (or another target you provide).
 #
 # Usage:
-#   ./scripts/install/download_lumend.sh
-#   LUMEN_RELEASE_URL=... ./scripts/install/download_lumend.sh
-#   LUMEN_TARGET=./bin/lumend ./scripts/install/download_lumend.sh
+#   scripts/install/download_lumend.sh
+#   LUMEN_RELEASE_URL=... scripts/install/download_lumend.sh
+#   LUMEN_TARGET=./bin/lumend scripts/install/download_lumend.sh
 #
 # Defaults:
 #   - RELEASE_TAG: v1.4.3
 #   - linux/amd64 tarball URL:
 #       https://github.com/network-lumen/blockchain/releases/download/v1.4.3/linux-amd64-v1.4.3.tar.gz
-#   - TARGET: deploy/bin/lumend (relative to repo root)
+#   - TARGET: bin/lumend (relative to repo root)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BIN_DIR="${REPO_ROOT}/bin"
 mkdir -p "${BIN_DIR}"
 

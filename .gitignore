@@ -1,16 +1,16 @@
-# Local environment and secrets (deploy repo)
+# Local environment and secrets
 
 # Per-service env files
 .env
-headscale/.env
-monitoring/.env
+ops/headscale/.env
+ops/monitoring/.env
 
 # Headscale auth keys and TLS certs
-headscale/headscale_keys_*.txt
-headscale/proxy/certs/
+ops/headscale/headscale_keys_*.txt
+ops/headscale/proxy/certs/
 
 # Headscale state backups
-headscale/backups/
+ops/headscale/backups/
 
 # Local Lumen binary used by helper scripts
 bin/lumend

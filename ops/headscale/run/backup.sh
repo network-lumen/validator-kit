@@ -7,7 +7,7 @@ set -euo pipefail
 # data volume (SQLite DB, keys, cache) that you can copy
 # off-host (USB key, offline backup, etc.).
 #
-# Usage (from deploy/headscale):
+# Usage (from ops/headscale):
 #   ./run/backup.sh                 # saves into ./backups/
 #   ./run/backup.sh /path/to/dir    # custom target directory
 #
@@ -60,4 +60,3 @@ echo
 echo "✅ Backup complete."
 echo "Snapshot archived at:"
 echo "  $ARCHIVE"
-

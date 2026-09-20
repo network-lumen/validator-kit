@@ -1,4 +1,6 @@
-This document provide clear, minimal expectations for validators and sentry operators joining the Lumen network.
+# Validator specifications and topology
+
+This document provides baseline expectations for validators and sentry operators joining the Lumen network.
 No over-engineering required — stability and correctness first.
 
 ────────────────────────────
