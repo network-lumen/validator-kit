@@ -19,7 +19,9 @@ VALIDATOR_CFG_DIR="${REPO_ROOT}/config/validator"
 GENESIS_FILE_REPO="${REPO_ROOT}/networks/mainnet/genesis.json"
 
 HOME_DIR="$HOME/.lumen"
-KEYRING="test"
+# Use an encrypted keyring by default. Set KEYRING=test only for disposable
+# local development chains, never for a production network or real funds.
+KEYRING="${KEYRING:-file}"
 STAKE="1000000ulmn"
 BALANCE="1000000ulmn"
 PQC_NAME="validator-pqc"

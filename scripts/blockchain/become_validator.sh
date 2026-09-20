@@ -3,7 +3,9 @@ set -euo pipefail
 
 HOME_DIR="${HOME_DIR:-$HOME/.lumen}"
 BIN="${BIN:-lumend}"
-KEYRING="${KEYRING:-test}"
+# Use an encrypted, password-protected keyring by default. Override with
+# KEYRING=os when a configured OS keyring is available on the host.
+KEYRING="${KEYRING:-file}"
 CHAIN_ID="${CHAIN_ID:-lumen}"
 RPC="${RPC:-http://127.0.0.1:26657}"
 FEES="${FEES:-0ulmn}"

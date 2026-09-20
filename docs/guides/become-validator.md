@@ -6,22 +6,27 @@ the node host. The join step alone does not create a validator.
 
 ## 1. Create or import an account
 
+Use the encrypted `file` keyring on a headless validator host. It prompts for
+a keyring password when keys are created or used. A configured `os` keyring is
+also suitable where the host provides a secure OS credential store. Never use
+the unencrypted `test` backend for mainnet funds or validator operations.
+
 ```bash
-lumend keys add validator --home ~/.lumen --keyring-backend test
+lumend keys add validator --home ~/.lumen --keyring-backend file
 # To recover an existing account instead:
-lumend keys add validator --home ~/.lumen --keyring-backend test --recover
+lumend keys add validator --home ~/.lumen --keyring-backend file --recover
 ```
 
 Store the mnemonic off-host. Fund the address returned by:
 
 ```bash
-lumend keys show validator -a --home ~/.lumen --keyring-backend test
+lumend keys show validator -a --home ~/.lumen --keyring-backend file
 ```
 
 ## 2. Promote the node
 
 ```bash
-HOME_DIR=~/.lumen FROM=validator \
+KEYRING=file HOME_DIR=~/.lumen FROM=validator \
   scripts/blockchain/become_validator.sh --moniker "<public-validator-name>"
 ```
 
@@ -40,7 +45,7 @@ validator. See [key separation](../concepts/validator-key-hardening.md) and
 After confirming the validator exists on chain and its PQC account is linked:
 
 ```bash
-HOME_DIR=~/.lumen FROM=validator \
+KEYRING=file HOME_DIR=~/.lumen FROM=validator \
   scripts/blockchain/stake_tokens.sh --amount <NUMulmn>
 ```
 
