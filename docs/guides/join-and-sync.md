@@ -30,10 +30,27 @@ configure state sync during the initial join:
 ./scripts/join.sh <moniker> --rpc http://trusted-rpc:26657
 ```
 
-The helper writes the trusted height and hash before installing the service.
-It prompts for the trust window, defaulting to 100 blocks. Verify that the
-trusted endpoint belongs to the intended chain before using it. State sync is
-not attempted on a node with existing local state.
+The helper validates `/status` before using the endpoint: it must report the
+chain ID from the node's `genesis.json`, a numeric latest height, and
+`catching_up = false`. It then retrieves and validates the commit hash at a
+trust height 100 blocks behind the latest height by default. State sync is not
+attempted on a node with existing local state.
+
+One RPC endpoint is supported. CometBFT requires two entries, so a single
+endpoint is written as `rpc_servers = "RPC1,RPC1"`; this is compatibility
+formatting and does not provide RPC redundancy. Two comma-separated endpoints
+may be supplied to `state_sync.sh`; both must report the expected chain and
+the same trust hash:
+
+```bash
+./scripts/network/state_sync.sh --home "$HOME/.lumen" \
+  --rpc https://rpc-a.example.org,https://rpc-b.example.org
+```
+
+Validation completes before `config.toml` is replaced. Existing non-empty
+state-sync values are shown and require confirmation before replacement. Stop
+the node before changing state-sync settings; the helper does not stop or
+restart `lumend` automatically.
 
 To inspect the service and logs:
 
