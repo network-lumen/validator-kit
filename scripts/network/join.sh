@@ -13,7 +13,7 @@ set -euo pipefail
 # --- Arguments ---------------------------------------------------------------
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: join.sh <moniker> [--role ROLE] [--force]"
+  echo "Usage: join.sh <moniker> [--home DIR] [--role ROLE] [--force]"
   exit 1
 fi
 
@@ -28,6 +28,11 @@ ROLE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --home)
+      [[ $# -ge 2 ]] || { echo "ERROR: --home requires a value." >&2; exit 1; }
+      HOME_DIR="$2"
+      shift
+      ;;
     --role)
       [[ $# -ge 2 ]] || { echo "ERROR: --role requires a value." >&2; exit 1; }
       NEW_ROLE="$2"
@@ -136,7 +141,7 @@ fi
 # Reset ~/.lumen
 # -----------------------------------------------------------------------------
 
-if [[ -d "$HOME_DIR" ]]; then
+if [[ -e "$HOME_DIR" || -L "$HOME_DIR" ]]; then
   if [[ "$FORCE" -eq 1 ]]; then
     rm -rf "$HOME_DIR"
   else

@@ -173,35 +173,12 @@ echo
 # A non-empty home suggests this host already has state or a
 # running node, and blowing it away from an "init" script would be
 # dangerous.
-if [[ -e "${NODE_HOME}" ]]; then
+if [[ -e "${NODE_HOME}" || -L "${NODE_HOME}" ]]; then
   echo "ERROR: ${NODE_HOME} already exists."
   echo "This script assumes a fresh node with no existing state."
   echo "If you need to rejoin, manage the home manually and use"
   echo "./scripts/network/join.sh directly (with --force if required)."
   exit 1
-fi
-
-# Resolve the HOME value seen by join.sh (which derives its own
-# \$HOME/.lumen) so that everything lines up with the operator-facing
-# node home path we just logged.
-HELPER_HOME="$HOME"
-if [[ "${NODE_HOME}" != "${DEFAULT_HOME}" ]]; then
-  PARENT_DIR="$(dirname "${NODE_HOME}")"
-  SYM_PATH="${PARENT_DIR}/.lumen"
-  mkdir -p "${PARENT_DIR}"
-
-  if [[ -e "${SYM_PATH}" && ! -L "${SYM_PATH}" ]]; then
-    echo "ERROR: ${SYM_PATH} already exists and is not a symlink; refusing to overwrite." >&2
-    exit 1
-  fi
-
-  if [[ -L "${SYM_PATH}" && "$(readlink "${SYM_PATH}")" != "${NODE_HOME}" ]]; then
-    echo "ERROR: ${SYM_PATH} already points somewhere else; refusing to reuse it." >&2
-    exit 1
-  fi
-
-  ln -sfn "${NODE_HOME}" "${SYM_PATH}"
-  HELPER_HOME="${PARENT_DIR}"
 fi
 
 if [[ ! -x "${DOWNLOAD_SCRIPT}" ]]; then
@@ -241,14 +218,14 @@ echo "       (this calls ./scripts/install/download_lumend.sh)"
 echo
 echo "[2/5] Joining the network as a node"
 
-JOIN_ARGS=(--role "${ROLE}")
+JOIN_ARGS=(--home "${NODE_HOME}" --role "${ROLE}")
 echo "       Using ${ROLE} config profile"
 
 # join.sh:
 #   - initializes a .lumen home
 #   - copies config/{fullnode,rpc}/*.toml and genesis.json
 #   - sets seeds/persistent_peers from config/*.txt
-HOME="${HELPER_HOME}" "${JOIN_SCRIPT}" "${MONIKER}" "${JOIN_ARGS[@]}"
+"${JOIN_SCRIPT}" "${MONIKER}" "${JOIN_ARGS[@]}"
 
 echo
 echo "[2b/5] Reinforcing peers from networks/mainnet/peers.txt (post-join)"
