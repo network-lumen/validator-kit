@@ -10,7 +10,7 @@ set -euo pipefail
 #   - tx indexer turned off
 #
 # Usage:
-#   scripts/init_seed.sh <moniker> [--home DIR] [--rpc URL]
+#   ./scripts/init_seed.sh <moniker> [--home DIR] [--rpc URL]
 #
 # All flags are forwarded to init_node.sh; the --seed flag is appended
 # automatically so operators don't have to remember it.
@@ -25,4 +25,3 @@ if [[ ! -x "${INIT_NODE_SCRIPT}" ]]; then
 fi
 
 exec "${INIT_NODE_SCRIPT}" "$@" --seed
-

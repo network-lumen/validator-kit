@@ -4,7 +4,8 @@ Each network directory is intended to hold its genesis, seed list, and
 persistent peer list. These files are operational inputs, not documentation.
 
 - [`mainnet/`](mainnet/README.md) is configured and used by the current scripts.
-- [`testnet/`](testnet/README.md) is reserved; no genesis or peers are supplied.
+- [`testnet/`](testnet/README.md) uses `chain_id: lumen-testnet`; its genesis
+  and peer inputs still need to be added before automation can join it.
 - [`devnet/`](devnet/README.md) is reserved; no genesis or peers are supplied.
 
 The current scripts explicitly use `networks/mainnet/`. Adding assets to a

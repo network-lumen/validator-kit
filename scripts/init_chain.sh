@@ -15,7 +15,7 @@ set -euo pipefail
 #   - attempt to connect to any existing network
 #
 # Use this exactly once per network. All other machines should use
-# scripts/init_node.sh to join the existing chain defined by the
+# ./scripts/init_node.sh to join the existing chain defined by the
 # resulting genesis.json.
 #######################################################################
 
@@ -26,7 +26,7 @@ Usage: $(basename "$0") <moniker> [--home DIR]
 Creates a *new* Lumen network with a single initial validator at block 0.
 
 This script:
-  - wraps scripts/network/bootstrap.sh
+  - wraps ./scripts/network/bootstrap.sh
   - creates a fresh node home
   - generates validator + consensus keys
   - generates PQC keys and writes them into genesis
@@ -36,7 +36,7 @@ Important:
   - This is a *network creation* tool, not a join tool.
   - Do NOT use it to connect a validator to an existing chain.
   - Peers and sentries are added later, after other nodes join using
-    the same genesis.json via scripts/init_node.sh.
+    the same genesis.json via ./scripts/init_node.sh.
 
 Options:
   --home DIR   Override the node home directory.
@@ -104,7 +104,7 @@ if [[ -e "${NODE_HOME}" ]]; then
   echo "ERROR: ${NODE_HOME} already exists."
   echo "This script is only for a *fresh* initial validator at block 0."
   echo "If you really need to wipe it, back it up and remove it"
-  echo "manually, or use scripts/network/bootstrap.sh with --force."
+    echo "manually, or use ./scripts/network/bootstrap.sh with --force."
   exit 1
 fi
 
@@ -147,14 +147,14 @@ if [[ ! -x "${SERVICE_SCRIPT}" ]]; then
 fi
 
 echo "[1/4] Ensuring lumend binary is available"
-echo "       (this calls scripts/install/download_lumend.sh)"
+echo "       (this calls ./scripts/install/download_lumend.sh)"
 # Download first so bootstrap will either succeed or fail before any
 # on-disk state is created with the wrong binary.
 "${DOWNLOAD_SCRIPT}"
 
 echo
 echo "[2/4] Bootstrapping initial validator from repo config"
-echo "       (scripts/network/bootstrap.sh ${MONIKER})"
+echo "       (./scripts/network/bootstrap.sh ${MONIKER})"
 # bootstrap.sh:
 #   - reads chain-id and genesis from networks/mainnet/genesis.json
 #   - uses config/validator/* as templates
@@ -276,7 +276,7 @@ echo "This node is the initial validator of a NEW network."
 echo "It starts from block 0 using the genesis.json created here."
 echo
 echo "Do NOT use this script to join an existing network."
-echo "Other nodes should use scripts/init_node.sh with the same genesis."
+echo "Other nodes should use ./scripts/init_node.sh with the same genesis."
 echo
 echo "You can inspect the service with:"
 echo "  sudo systemctl status lumend"

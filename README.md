@@ -2,7 +2,9 @@
 
 Tools and documentation for joining and operating the Lumen network. The
 included network files currently configure **mainnet** (`chain_id: lumen`).
-Testnet and devnet are not configured in this repository yet.
+The available testnet uses `chain_id: lumen-testnet`; its network inputs are
+not yet included in this checkout, so the current join scripts remain
+mainnet-only.
 
 ## Validator safety
 
@@ -19,7 +21,7 @@ Testnet and devnet are not configured in this repository yet.
 From the repository root on a Linux host:
 
 ```bash
-scripts/join.sh <moniker> [--rpc http://trusted-rpc:26657]
+./scripts/join.sh <moniker> [--rpc http://trusted-rpc:26657]
 ```
 
 This creates a **non-validator** full node. Use `--public-api` only when you

@@ -7,7 +7,7 @@ set -euo pipefail
 # - Optionally runs `tailscale up` with your Headscale URL and auth key
 #
 # Usage (from the repository root):
-#   sudo scripts/install/tailscale.sh \
+#   sudo ./scripts/install/tailscale.sh \
 #     --login-server https://headscale.example.com \
 #     --authkey tskey-xxxxxxxx \
 #     --hostname validator-1
@@ -21,7 +21,7 @@ set -euo pipefail
 
 if [[ "$EUID" -ne 0 ]]; then
   echo "ERROR: this installer must be run as root (sudo)." >&2
-  echo "Re-run it with: sudo scripts/install/tailscale.sh [...flags]" >&2
+  echo "Re-run it with: sudo ./scripts/install/tailscale.sh [...flags]" >&2
   exit 1
 fi
 
@@ -83,7 +83,7 @@ fi
 if [[ -z "$LOGIN_SERVER" || -z "$AUTHKEY" ]]; then
   echo "[3/3] LOGIN_SERVER or AUTHKEY not provided; not running 'tailscale up'." >&2
   echo "Example:" >&2
-  echo "  sudo scripts/install/tailscale.sh \\" >&2
+  echo "  sudo ./scripts/install/tailscale.sh \\" >&2
   echo "    --login-server https://headscale.example.com \\" >&2
   echo "    --authkey tskey-xxxxxxxx \\" >&2
   echo "    --hostname validator-1" >&2

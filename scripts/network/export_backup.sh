@@ -11,7 +11,7 @@ set -euo pipefail
 # off the server for disaster recovery.
 #
 # Usage:
-#   scripts/network/export_backup.sh [HOME_DIR] [SNAP_DIR] [OUT_DIR]
+#   ./scripts/network/export_backup.sh [HOME_DIR] [SNAP_DIR] [OUT_DIR]
 #
 # Run it as the same user that owns the node home, or pass an explicit
 # HOME_DIR/SNAP_DIR/OUT_DIR if you run it with sudo.

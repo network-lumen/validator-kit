@@ -38,15 +38,15 @@ You can also set LUMEN_HOME to point at the desired node home; the
 
 Safety guarantees:
   - Refuses to run if the resolved node home already exists (no
-    destructive resets; use scripts/network/join.sh --force if you
+    destructive resets; use ./scripts/network/join.sh --force if you
     know what you're doing).
   - Forces the order: join -> optional state sync -> systemd service.
   - Verifies state sync before service start when --rpc is provided.
 
 Advanced users can call the underlying scripts directly:
-  - scripts/network/join.sh
-  - scripts/network/state_sync.sh
-  - scripts/install/lumend_service.sh
+  - ./scripts/network/join.sh
+  - ./scripts/network/state_sync.sh
+  - ./scripts/install/lumend_service.sh
 EOF
 }
 
@@ -134,7 +134,7 @@ if [[ -e "${NODE_HOME}" ]]; then
   echo "ERROR: ${NODE_HOME} already exists."
   echo "This script assumes a fresh node with no existing state."
   echo "If you need to rejoin, manage the home manually and use"
-  echo "scripts/network/join.sh directly (with --force if required)."
+  echo "./scripts/network/join.sh directly (with --force if required)."
   exit 1
 fi
 
@@ -192,7 +192,7 @@ if [[ ! -x "${RELOAD_PEERS_SCRIPT}" ]]; then
 fi
 
 echo "[1/5] Ensuring lumend binary is available"
-echo "       (this calls scripts/install/download_lumend.sh)"
+echo "       (this calls ./scripts/install/download_lumend.sh)"
 "${DOWNLOAD_SCRIPT}"
 
 echo
@@ -235,7 +235,7 @@ if [[ -z "${RPC_URL}" ]]; then
   echo "No RPC provided, skipping state sync. Bootstrap will rely on seeds + PEX."
 else
   echo "[4/5] Enabling state sync *before* first start"
-  echo "       (this calls scripts/network/state_sync.sh)"
+echo "       (this calls ./scripts/network/state_sync.sh)"
 
   STATE_SYNC_ARGS=(--home "${NODE_HOME}")
   if [[ -n "${RPC_URL}" ]]; then
@@ -255,7 +255,7 @@ else
   if ! grep -Eq '^\s*enable\s*=\s*true' "${CFG_TOML}"; then
     echo "ERROR: state sync does not appear to be enabled in ${CFG_TOML}."
     echo "Refusing to install/start the service. Inspect the file and,"
-    echo "if needed, re-run scripts/network/state_sync.sh manually."
+    echo "if needed, re-run ./scripts/network/state_sync.sh manually."
     exit 1
   fi
 fi

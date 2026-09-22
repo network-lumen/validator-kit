@@ -10,7 +10,7 @@ set -euo pipefail
 # Default listen address: 0.0.0.0:9100 (reachable from Tailscale / LAN)
 #
 # Usage (on validator / sentry host):
-#   sudo scripts/install/node_exporter_service.sh
+#   sudo ./scripts/install/node_exporter_service.sh
 ###############################################################################
 
 if [[ $EUID -ne 0 ]]; then

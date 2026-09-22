@@ -8,7 +8,7 @@ service and creates a **non-validator** node.
 ## Standard join
 
 ```bash
-scripts/join.sh <moniker>
+./scripts/join.sh <moniker>
 ```
 
 Without an RPC endpoint, the node synchronizes using seeds, peer exchange, and
@@ -17,7 +17,7 @@ block replay. The helper downloads `bin/lumend` when needed, installs the
 `networks/mainnet/` into the node home, and writes seeds and peers into its
 `config.toml`.
 
-Use `--public-api` only for a public RPC/API node. Use `scripts/init_seed.sh`
+Use `--public-api` only for a public RPC/API node. Use `./scripts/init_seed.sh`
 for a P2P seed node; these roles have different configuration profiles.
 
 ## Fast sync before first start
@@ -26,7 +26,7 @@ If you have a trusted RPC endpoint and the network serves state snapshots,
 configure state sync during the initial join:
 
 ```bash
-scripts/join.sh <moniker> --rpc http://trusted-rpc:26657
+./scripts/join.sh <moniker> --rpc http://trusted-rpc:26657
 ```
 
 The helper writes the trusted height and hash before installing the service.

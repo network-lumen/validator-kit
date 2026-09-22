@@ -1,6 +1,6 @@
 # Manual node setup
 
-This is the transparent equivalent of `scripts/join.sh` for operators who
+This is the transparent equivalent of `./scripts/join.sh` for operators who
 need to inspect each step or recover a node. The commands below configure the
 current mainnet. The automated join workflow remains the recommended path for
 new installations.
@@ -58,7 +58,7 @@ For a persistent service, the repository service installer can create the
 systemd unit after you have reviewed the generated configuration:
 
 ```bash
-sudo LUMEND_BIN="$LUMEND" scripts/install/lumend_service.sh "$LUMEN_HOME" "$USER"
+sudo LUMEND_BIN="$LUMEND" ./scripts/install/lumend_service.sh "$LUMEN_HOME" "$USER"
 sudo systemctl status lumend
 journalctl -u lumend -f
 ```

@@ -7,9 +7,9 @@ set -euo pipefail
 # and place it under bin/lumend (or another target you provide).
 #
 # Usage:
-#   scripts/install/download_lumend.sh
-#   LUMEN_RELEASE_URL=... scripts/install/download_lumend.sh
-#   LUMEN_TARGET=./bin/lumend scripts/install/download_lumend.sh
+#   ./scripts/install/download_lumend.sh
+#   LUMEN_RELEASE_URL=... ./scripts/install/download_lumend.sh
+#   LUMEN_TARGET=./bin/lumend ./scripts/install/download_lumend.sh
 #
 # Defaults:
 #   - RELEASE_TAG: v1.4.3

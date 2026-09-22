@@ -160,7 +160,7 @@ After **properly backing up all account and PQC keys**, operators may run
 the following from the repository root:
 
 ```bash
-scripts/network/scrub_validator_keys.sh
+./scripts/network/scrub_validator_keys.sh
 ```
 
 This script is designed to:

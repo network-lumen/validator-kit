@@ -27,7 +27,7 @@ lumend keys show validator -a --home ~/.lumen --keyring-backend file
 
 ```bash
 KEYRING=file HOME_DIR=~/.lumen FROM=validator \
-  scripts/blockchain/become_validator.sh --moniker "<public-validator-name>"
+  ./scripts/blockchain/become_validator.sh --moniker "<public-validator-name>"
 ```
 
 The helper ensures a `validator-pqc` key exists, links the PQC account on
@@ -46,7 +46,7 @@ After confirming the validator exists on chain and its PQC account is linked:
 
 ```bash
 KEYRING=file HOME_DIR=~/.lumen FROM=validator \
-  scripts/blockchain/stake_tokens.sh --amount <NUMulmn>
+  ./scripts/blockchain/stake_tokens.sh --amount <NUMulmn>
 ```
 
 The helper delegates from the validator account to its own validator. See
