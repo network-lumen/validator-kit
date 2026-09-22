@@ -29,6 +29,7 @@ node; do not overwrite an existing validator home.
 "$LUMEND" init "<moniker>" --chain-id lumen --home "$LUMEN_HOME"
 cp config/fullnode/{app.toml,client.toml,config.toml} "$LUMEN_HOME/config/"
 cp networks/mainnet/genesis.json "$LUMEN_HOME/config/genesis.json"
+sed -i 's|^minimum-gas-prices *=.*|minimum-gas-prices = "0ulmn"|' "$LUMEN_HOME/config/app.toml"
 ```
 
 Convert the repository lists to the comma-separated format expected by
@@ -51,7 +52,7 @@ firewall rules and an operator-reviewed security configuration.
 For an initial foreground run, use:
 
 ```bash
-"$LUMEND" start --home "$LUMEN_HOME" --minimum-gas-prices 0ulmn
+"$LUMEND" start --home "$LUMEN_HOME"
 ```
 
 For a persistent service, the repository service installer can create the

@@ -65,7 +65,7 @@ info "Valoper:  $VALOPER"
 ###############################################################################
 step "Checking validator status and PQC link"
 
-if ! "$BIN" q staking validator "$VALOPER" --node "$RPC" >/devnull 2>&1; then
+if ! "$BIN" q staking validator "$VALOPER" --node "$RPC" >/dev/null 2>&1; then
   error "This address is not a validator on-chain. Run become_validator first."
 fi
 
