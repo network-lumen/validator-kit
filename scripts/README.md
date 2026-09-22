@@ -4,6 +4,11 @@ Run these commands from the repository root unless a script says otherwise.
 Node setup scripts call `init_node.sh` through the `./scripts/join.sh` entrypoint.
 The current node setup scripts use the files in `networks/mainnet/`.
 
+Run `./scripts/doctor.sh` for read-only post-install diagnostics. It checks the
+binary, node home, service, local RPC, chain ID, sync state, peers, listeners,
+disk space, and sensitive-file warnings without starting, stopping, or repairing
+the node.
+
 | Area | Commands |
 | --- | --- |
 | Node setup | `./scripts/join.sh`, `./scripts/init_seed.sh` |
