@@ -12,7 +12,8 @@ service and creates a **non-validator** node.
 ```
 
 Without an RPC endpoint, the node synchronizes using seeds, peer exchange, and
-block replay. The helper downloads `bin/lumend` when needed, installs the
+block replay. The helper downloads and SHA256-verifies `bin/lumend` when
+needed, installs the
 `config/fullnode/` profile, copies the mainnet genesis from
 `networks/mainnet/` into the node home, and writes seeds and peers into its
 `config.toml`.

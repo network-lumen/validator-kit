@@ -7,10 +7,19 @@ new installations.
 
 ## Prerequisites
 
-Use a supported Linux host with `curl`, `jq`, `tar`, and `sudo`. Obtain a
-verified `lumend` release from the project's release process and make it
-executable, for example at `/usr/local/bin/lumend`. Do not install an
-unverified binary on a validator host.
+Use a supported Linux host with `curl`, `jq`, `tar`, `sha256sum`, and `sudo`.
+The installer supports Linux `x86_64` (`amd64`) and `aarch64` (`arm64`) and
+verifies the release archive against the published `SHA256SUMS` manifest before
+installation. From the repository root, run:
+
+```bash
+./scripts/install/download_lumend.sh
+```
+
+The default release is `v1.4.3`; set `LUMEN_RELEASE_TAG` to select another
+published release. `LUMEN_RELEASE_URL` is an exact archive URL override and
+must be paired with `LUMEN_CHECKSUM_URL`. Do not install an unverified binary
+on a validator host.
 
 From the repository root, set the node home and confirm the binary:
 
