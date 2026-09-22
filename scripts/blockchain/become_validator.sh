@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 HOME_DIR="${HOME_DIR:-$HOME/.lumen}"
 BIN="${BIN:-lumend}"
@@ -65,7 +66,7 @@ if [[ "$BALANCE_ULMN" == "0" ]]; then
 fi
 
 echo
-read -r -p "Have you safely stored the mnemonic for '$FROM'? (y/N) " MNEM_OK
+read -r -p "Confirm the '$FROM' account mnemonic is stored securely offline [y/N]: " MNEM_OK
 MNEM_OK=${MNEM_OK:-N}
 if [[ ! "$MNEM_OK" =~ ^[Yy]$ ]]; then
   error "Please back up your mnemonic offline before creating a validator."
@@ -133,6 +134,7 @@ info "Consensus pubkey OK"
 
 # ------------------------- BUILD validator.json -------------------------
 TMP_JSON=$(mktemp)
+trap 'rm -f "$TMP_JSON"' EXIT
 cat > "$TMP_JSON" <<EOF
 {
   "pubkey": $REAL_PUBKEY,
@@ -180,7 +182,7 @@ info "Tx: $HASH"
 
 # ------------------------- OPTIONAL LOCAL BACKUP -------------------------
 echo
-read -r -p "To facilitate future UI import, create local backup in '$HOME_DIR/${BACKUP_DIR_DEFAULT}' (wallet keyring + PQC + optional mnemonic)? (y/N) " DO_BACKUP
+read -r -p "Create a local recovery backup in '$HOME_DIR/${BACKUP_DIR_DEFAULT}' (account/PQC keys and validator config)? (y/N) " DO_BACKUP
 DO_BACKUP=${DO_BACKUP:-N}
 
 if [[ "$DO_BACKUP" =~ ^[Yy]$ ]]; then
@@ -188,6 +190,7 @@ if [[ "$DO_BACKUP" =~ ^[Yy]$ ]]; then
 
   BACKUP_DIR="${HOME_DIR}/${BACKUP_DIR_DEFAULT}"
   mkdir -p "$BACKUP_DIR"
+  chmod 700 "$BACKUP_DIR"
   rm -rf "${BACKUP_DIR:?}/"*
 
   {
@@ -198,20 +201,16 @@ if [[ "$DO_BACKUP" =~ ^[Yy]$ ]]; then
     echo "pqc_name=$PQC_NAME"
   } > "$BACKUP_DIR/metadata.txt"
 
-  # Optional mnemonic capture (operator may prefer offline storage only).
-  echo
-  read -r -p "Paste mnemonic for '$FROM' to store in backup (leave empty to skip): " MNEMONIC_INPUT || true
-  if [[ -n "$MNEMONIC_INPUT" ]]; then
-    printf '%s\n' "$MNEMONIC_INPUT" > "$BACKUP_DIR/validator_mnemonic.txt"
-  fi
-
   cp -r "$HOME_DIR"/keyring-* "$BACKUP_DIR/" 2>/dev/null || true
   cp -r "$HOME_DIR/pqc_keys" "$BACKUP_DIR/" 2>/dev/null || true
   cp "$HOME_DIR/config/"*.json "$BACKUP_DIR/" 2>/dev/null || true
   cp "$HOME_DIR/config/"*.toml "$BACKUP_DIR/" 2>/dev/null || true
+  find "$BACKUP_DIR" -type d -exec chmod 700 {} +
+  find "$BACKUP_DIR" -type f -exec chmod 600 {} +
 
   info "Local backup directory ready to export: $BACKUP_DIR"
-  info "Copy it OFF the server (e.g. with scp) and store it safely."
+  info "Contains account/PQC keys, consensus key, node key, and config; signing state is not included."
+  info "Copy it OFF the server and store it securely. The mnemonic is never written by this helper."
 else
   info "Skipped creation of on-host validator backup directory."
 fi

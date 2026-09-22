@@ -175,7 +175,7 @@ if [[ ! -d "${BACKUP_DIR}" ]]; then
 fi
 
 MISSING=0
-for f in "metadata.txt" "validator_mnemonic.txt"; do
+for f in "metadata.txt"; do
   if [[ ! -f "${BACKUP_DIR}/${f}" ]]; then
     echo "WARNING: ${BACKUP_DIR}/${f} is missing."
     MISSING=1

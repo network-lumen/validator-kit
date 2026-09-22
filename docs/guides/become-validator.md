@@ -17,7 +17,9 @@ lumend keys add validator --home ~/.lumen --keyring-backend file
 lumend keys add validator --home ~/.lumen --keyring-backend file --recover
 ```
 
-Store the mnemonic off-host. Fund the address returned by:
+Store the mnemonic securely outside the validator host. The helper will ask you
+to confirm that it is stored offline, but will not ask you to paste it or write
+it into a local backup file. Fund the address returned by:
 
 ```bash
 lumend keys show validator -a --home ~/.lumen --keyring-backend file
@@ -33,8 +35,15 @@ KEYRING=file HOME_DIR=~/.lumen FROM=validator \
 The helper ensures a `validator-pqc` key exists, links the PQC account on
 chain, obtains the node's consensus public key, and broadcasts a validator
 creation transaction with minimal self-delegation. It can optionally create
-`~/.lumen/validator-node.bak`, containing key material and metadata. Export
-both account and PQC keys off-host; a local backup alone is insufficient.
+`~/.lumen/validator-node.bak`, containing account/PQC keys, consensus and node
+keys, and configuration metadata. The directory is restricted to the owner;
+export it off-host and store it securely. It does not contain the mnemonic or
+validator signing state.
+
+The consensus key is highly sensitive and must remain on exactly one active
+validator. `priv_validator_state.json` is safety-critical signing state, not an
+ordinary backup file; do not restore stale state without an operator-reviewed
+recovery plan.
 
 Keep `~/.lumen/config/priv_validator_key.json` on exactly one running
 validator. See [key separation](../concepts/validator-key-hardening.md) and

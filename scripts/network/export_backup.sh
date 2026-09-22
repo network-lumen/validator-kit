@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 ###############################################
 # Lumen — Export validator backup + snapshot
@@ -46,10 +47,13 @@ if [[ -d "$SNAP_DIR" ]]; then
 fi
 
 mkdir -p "$OUT_DIR"
+chmod 700 "$OUT_DIR"
 TS="$(date +%Y%m%d_%H%M%S)"
 ARCHIVE="$OUT_DIR/lumen_validator_backup_$TS.tar.gz"
 
 TMP_DIR="$(mktemp -d)"
+cleanup() { rm -rf "$TMP_DIR"; }
+trap cleanup EXIT
 mkdir -p "$TMP_DIR/backup"
 
 echo "→ Copying validator backup..."
@@ -65,9 +69,10 @@ fi
 
 echo "→ Creating archive: $ARCHIVE"
 tar -czf "$ARCHIVE" -C "$TMP_DIR" backup
-rm -rf "$TMP_DIR"
+chmod 600 "$ARCHIVE"
 
 echo
 echo "✅ Done."
 echo "Archive ready to copy off-host:"
 echo "  $ARCHIVE"
+echo "Archive contains sensitive account/PQC and validator key material; store it securely."

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 # ---------------------------------------------------------------------------
 # Lumen – Validator Bootstrap (non-interactive)
@@ -8,7 +9,7 @@ set -euo pipefail
 # - Injects config/validator/*.toml
 # - Generates validator key + PQC key
 # - Creates gentx and collects it
-# - Always creates a plaintext backup
+# - Creates a restricted local backup without writing the mnemonic to disk
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -109,8 +110,8 @@ cp "$GENESIS_FILE_REPO" "$HOME_DIR/config/genesis.json"
 # ---------------------------------------------------------------------------
 
 echo "[4/7] Creating validator key"
-KEY_JSON=$("$LUMEN_BIN" keys add validator --keyring-backend "$KEYRING" --home "$HOME_DIR" --output json)
-MNEMONIC=$(printf '%s' "$KEY_JSON" | jq -r '.mnemonic')
+echo "Store the generated account mnemonic securely outside this validator host."
+"$LUMEN_BIN" keys add validator --keyring-backend "$KEYRING" --home "$HOME_DIR"
 VAL_ADDR=$("$LUMEN_BIN" keys show validator -a --keyring-backend "$KEYRING" --home "$HOME_DIR")
 
 echo "[5/7] Adding validator genesis balance"
@@ -156,8 +157,7 @@ echo "[7/7] Creating backup"
 BACKUP_DIR="$HOME_DIR/$BACKUP_DIR_SUFFIX"
 rm -rf "$BACKUP_DIR"
 mkdir -p "$BACKUP_DIR"
-
-printf '%s\n' "$MNEMONIC" >"$BACKUP_DIR/validator_mnemonic.txt"
+chmod 700 "$BACKUP_DIR"
 
 {
   echo "moniker=$MONIKER"
@@ -170,11 +170,15 @@ cp -r "$HOME_DIR/keyring-$KEYRING" "$BACKUP_DIR/keyring-$KEYRING" 2>/dev/null ||
 cp -r "$HOME_DIR/pqc_keys" "$BACKUP_DIR/pqc_keys" 2>/dev/null || true
 cp "$HOME_DIR/config/"*.json "$BACKUP_DIR/" || true
 cp "$HOME_DIR/config/"*.toml "$BACKUP_DIR/" || true
+find "$BACKUP_DIR" -type d -exec chmod 700 {} +
+find "$BACKUP_DIR" -type f -exec chmod 600 {} +
 
 echo
 echo "=== Bootstrap complete ==="
 echo "Home directory : $HOME_DIR"
 echo "Backup folder  : $BACKUP_DIR"
+echo "Backup contents: account keyring, PQC keys, consensus/node keys, and config"
+echo "Mnemonic       : not written; store it securely outside this host"
 echo "Validator addr : $VAL_ADDR"
 echo "PQC key name   : $PQC_NAME"
 echo

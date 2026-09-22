@@ -4,6 +4,10 @@ set -euo pipefail
 echo ""
 echo "=== Lumen Node Snapshot Restore ==="
 echo ""
+echo "WARNING: This restore replaces node data and resets priv_validator_state.json."
+echo "It is not a complete or automatically safe validator recovery procedure."
+echo "Do not use it for an active validator without an operator-reviewed signing-state plan."
+echo ""
 
 HOME_DIR="${1:-/root/.lumen}"
 SNAP_DIR="${2:-/root/snapshots}"
