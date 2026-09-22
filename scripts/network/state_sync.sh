@@ -13,7 +13,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--home DIR] [--rpc URL[,URL2]] [--last N] [--trust-period DUR]
+Usage: $(basename "$0") [options]
 
 Options:
   --home DIR        Node home directory (default: \$HOME/.lumen).
@@ -21,6 +21,8 @@ Options:
                     A single URL is intentionally written twice for CometBFT.
   --last N          How many blocks behind latest to trust (default: 100).
   --trust-period D  Trust period for the light client (default: 168h0m0s).
+  --non-interactive  Never prompt; fail if required input is unavailable.
+  --force            Allow replacing existing non-empty state-sync settings.
   -h, --help        Show this help and exit.
 EOF
 }
@@ -29,6 +31,8 @@ HOME_DIR="$HOME/.lumen"
 RPC_INPUT=""
 LAST=100
 TRUST_PERIOD="168h0m0s"
+NON_INTERACTIVE=0
+FORCE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -51,6 +55,12 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || { echo "ERROR: missing value for --trust-period." >&2; usage; exit 1; }
       TRUST_PERIOD="$2"
       shift
+      ;;
+    --non-interactive)
+      NON_INTERACTIVE=1
+      ;;
+    --force)
+      FORCE=1
       ;;
     -h|--help)
       usage
@@ -87,6 +97,10 @@ for required_command in awk curl jq mktemp mv rm uname; do
 done
 
 if [[ -z "$RPC_INPUT" ]]; then
+  if (( NON_INTERACTIVE == 1 )); then
+    echo "ERROR: --non-interactive requires --rpc URL[,URL2]." >&2
+    exit 1
+  fi
   echo "No RPC provided, skipping state sync. Bootstrap will rely on seeds and PEX."
   exit 0
 fi
@@ -148,16 +162,27 @@ EXISTING_ENABLE="$(toml_statesync_value enable || true)"
 EXISTING_RPC="$(toml_statesync_value rpc_servers || true)"
 EXISTING_TRUST_HEIGHT="$(toml_statesync_value trust_height || true)"
 EXISTING_TRUST_HASH="$(toml_statesync_value trust_hash || true)"
-if [[ -n "$EXISTING_RPC$EXISTING_TRUST_HEIGHT$EXISTING_TRUST_HASH" || "$EXISTING_ENABLE" == "true" ]]; then
+EXISTING_CONFIGURED=0
+if [[ "$EXISTING_ENABLE" == "true" || ( -n "$EXISTING_RPC" && "$EXISTING_RPC" != '""' ) || ( -n "$EXISTING_TRUST_HEIGHT" && "$EXISTING_TRUST_HEIGHT" != "0" ) || ( -n "$EXISTING_TRUST_HASH" && "$EXISTING_TRUST_HASH" != '""' ) ]]; then
+  EXISTING_CONFIGURED=1
+fi
+if (( EXISTING_CONFIGURED == 1 )); then
   echo "Existing state-sync configuration:"
   echo "  enable       = ${EXISTING_ENABLE:-<unset>}"
   echo "  rpc_servers  = ${EXISTING_RPC:-<unset>}"
   echo "  trust_height = ${EXISTING_TRUST_HEIGHT:-<unset>}"
   echo "  trust_hash   = ${EXISTING_TRUST_HASH:-<unset>}"
-  read -r -p "Replace these state-sync values after validation? [y/N]: " REPLACE_EXISTING
-  if [[ ! "${REPLACE_EXISTING:-N}" =~ ^[Yy]$ ]]; then
-    echo "Aborting without changes."
-    exit 0
+  if (( FORCE == 1 )); then
+    echo "--force supplied; existing state-sync values may be replaced after validation."
+  elif (( NON_INTERACTIVE == 1 )); then
+    echo "ERROR: existing state-sync values require --force in --non-interactive mode." >&2
+    exit 1
+  else
+    read -r -p "Replace these state-sync values after validation? [y/N]: " REPLACE_EXISTING
+    if [[ ! "${REPLACE_EXISTING:-N}" =~ ^[Yy]$ ]]; then
+      echo "Aborting without changes."
+      exit 0
+    fi
   fi
 fi
 
@@ -204,9 +229,9 @@ else
 fi
 
 LATEST_HEIGHT="$(query_status "$RPC1")" || exit 1
-SECOND_LATEST_HEIGHT="$(query_status "$RPC2")" || exit 1
+query_status "$RPC2" >/dev/null || exit 1
 
-if [[ -t 0 ]]; then
+if (( NON_INTERACTIVE == 0 )) && [[ -t 0 ]]; then
   read -r -p "Blocks to go back from latest height (trust window) [$LAST]: " INPUT_LAST
   if [[ -n "$INPUT_LAST" ]]; then
     LAST="$INPUT_LAST"

@@ -238,6 +238,7 @@ else
 echo "       (this calls ./scripts/network/state_sync.sh)"
 
   STATE_SYNC_ARGS=(--home "${NODE_HOME}")
+  STATE_SYNC_ARGS+=(--non-interactive)
   if [[ -n "${RPC_URL}" ]]; then
     STATE_SYNC_ARGS+=(--rpc "${RPC_URL}")
   fi

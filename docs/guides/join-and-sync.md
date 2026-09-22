@@ -52,6 +52,18 @@ state-sync values are shown and require confirmation before replacement. Stop
 the node before changing state-sync settings; the helper does not stop or
 restart `lumend` automatically.
 
+For unattended deployment, pass the RPC explicitly with
+`--non-interactive`. The default trust offset is used without prompting:
+
+```bash
+./scripts/network/state_sync.sh --home "$HOME/.lumen" \
+  --rpc https://rpc.example.org --non-interactive
+```
+
+If state sync is already configured, unattended replacement fails unless
+`--force` is also supplied. `--force` permits replacement but does not weaken
+RPC, chain-ID, height, catching-up, or trust-hash validation.
+
 To inspect the service and logs:
 
 ```bash
