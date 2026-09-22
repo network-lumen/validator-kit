@@ -61,10 +61,6 @@ else
 fi
 
 SERVICE_FILE="/etc/systemd/system/lumend.service"
-RPC_LADDR="${RPC_LADDR:-tcp://0.0.0.0:26657}"
-P2P_LADDR="${P2P_LADDR:-tcp://0.0.0.0:26656}"
-API_ADDR="${API_ADDR:-tcp://0.0.0.0:1317}"
-GRPC_ADDR="${GRPC_ADDR:-0.0.0.0:9090}"
 
 if [ ! -x "${BIN_PATH}" ]; then
   echo "lumend binary not found or not executable at ${BIN_PATH}." >&2
@@ -129,9 +125,7 @@ Wants=network-online.target
 
 [Service]
 User=${RUN_USER}
-ExecStart=${BIN_PATH} start --home ${HOME_DIR} \\
-  --p2p.laddr ${P2P_LADDR} \\
-  --minimum-gas-prices 0ulmn
+ExecStart=${BIN_PATH} start --home ${HOME_DIR}
 Restart=on-failure
 LimitNOFILE=65535
 
@@ -147,13 +141,7 @@ Wants=network-online.target
 
 [Service]
 User=${RUN_USER}
-ExecStart=${BIN_PATH} start --home ${HOME_DIR} \\
-  --rpc.laddr ${RPC_LADDR} \\
-  --p2p.laddr ${P2P_LADDR} \\
-  --api.enable \\
-  --api.address ${API_ADDR} \\
-  --grpc.address ${GRPC_ADDR} \\
-  --minimum-gas-prices 0ulmn
+ExecStart=${BIN_PATH} start --home ${HOME_DIR}
 Restart=on-failure
 LimitNOFILE=65535
 
