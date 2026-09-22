@@ -21,17 +21,18 @@ mainnet-only.
 From the repository root on a Linux host:
 
 ```bash
-./scripts/join.sh <moniker> [--rpc http://trusted-rpc:26657]
+./scripts/join.sh <moniker> --role fullnode [--rpc http://trusted-rpc:26657]
 ```
 
-This creates a **non-validator** full node. Use `--public-api` only when you
-intend to run the public RPC/API profile. See the [join guide](docs/guides/join-and-sync.md)
-for prerequisites and synchronization choices. Promotion to validator is a
-separate, explicit step.
+Available roles are `fullnode`, `rpc`, `validator`, `sentry`, and `seed`; the
+default is `fullnode`. See the [node roles guide](docs/guides/node-roles.md) and
+[join guide](docs/guides/join-and-sync.md) for listener behavior and state-sync
+choices. Validator registration and staking remain separate explicit steps.
 
 ## Documentation
 
 - [Join and synchronize a node](docs/guides/join-and-sync.md)
+- [Node roles](docs/guides/node-roles.md)
 - [Manual node setup](docs/guides/manual-node-setup.md)
 - [Become a validator and stake](docs/guides/become-validator.md)
 - [Key separation and hardening](docs/concepts/validator-key-hardening.md)
@@ -45,7 +46,7 @@ separate, explicit step.
 | Path | Purpose |
 | --- | --- |
 | [`scripts/`](scripts/README.md) | Node, network, install, staking, and snapshot helpers |
-| [`config/`](config/README.md) | Full node, RPC, and validator configuration templates |
+| [`config/`](config/README.md) | Role-specific node configuration templates |
 | [`networks/`](networks/README.md) | Network genesis, seeds, and persistent peers |
 | [`ops/`](ops/README.md) | Headscale and monitoring deployments |
 | `bin/` | Local `lumend` binary downloaded by the installer |

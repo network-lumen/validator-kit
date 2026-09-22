@@ -2,10 +2,11 @@
 set -euo pipefail
 
 #######################################################################
-# Lumen — Opinionated fullnode / sentry init
+# Lumen - Role-aware node init
 #
 # This script wraps the existing helpers to encode the "safe" order
-# for joining an existing network as a non-validator node:
+# for joining an existing network with a selected role. The validator role
+# installs validator-suitable configuration but does not register a validator:
 #
 #   1. Ensure a lumend binary exists.
 #   2. Join the network (creates \$HOME/.lumen with config + keys).
@@ -18,20 +19,22 @@ set -euo pipefail
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") <moniker> [--home DIR] [--rpc URL] [--public-api]
+Usage: $(basename "$0") <moniker> [options]
 
-Joins an existing Lumen network as a fullnode / sentry on this host.
+Joins an existing Lumen network using one of the supported node roles.
 
 Options:
-  --seed          Use the seed profile (P2P-only bootstrap node).
+  --role ROLE     fullnode, rpc, validator, sentry, or seed (default: fullnode).
+  --public-api    Legacy alias for --role rpc.
+  --seed          Legacy alias for --role seed.
   --home DIR      Override the node home directory.
                   Default: \$HOME/.lumen (or LUMEN_HOME if set).
   --rpc URL       Trusted RPC endpoint to use for state sync
                   (e.g. http://100.64.0.1:26657).
                   If omitted, state sync is skipped and the node
                   synchronizes using seeds and peer exchange.
-  --public-api    Use the RPC/API profile (config/rpc) instead of the
-                  default fullnode profile (config/fullnode).
+  --non-interactive
+                  Never prompt when an existing service requires replacement.
 
 You can also set LUMEN_HOME to point at the desired node home; the
 --home flag takes precedence over LUMEN_HOME.
@@ -54,6 +57,8 @@ MONIKER=""
 RPC_URL=""
 PUBLIC_API=0
 SEED_MODE=0
+ROLE=""
+NON_INTERACTIVE=0
 LUMEN_HOME_OVERRIDE="${LUMEN_HOME:-}"
 
 while [[ $# -gt 0 ]]; do
@@ -66,8 +71,22 @@ while [[ $# -gt 0 ]]; do
       LUMEN_HOME_OVERRIDE="${2:-}"
       shift 2 || true
       ;;
+    --role)
+      NEW_ROLE="${2:-}"
+      if [[ -n "$ROLE" && "$ROLE" != "$NEW_ROLE" ]]; then
+        echo "ERROR: conflicting node roles '$ROLE' and '$NEW_ROLE'." >&2
+        exit 1
+      fi
+      ROLE="$NEW_ROLE"
+      shift 2 || true
+      ;;
     --seed)
+      if [[ -n "$ROLE" && "$ROLE" != seed ]]; then
+        echo "ERROR: --seed conflicts with --role $ROLE." >&2
+        exit 1
+      fi
       SEED_MODE=1
+      ROLE="seed"
       shift
       ;;
     --rpc)
@@ -75,7 +94,16 @@ while [[ $# -gt 0 ]]; do
       shift 2 || true
       ;;
     --public-api)
+      if [[ -n "$ROLE" && "$ROLE" != rpc ]]; then
+        echo "ERROR: --public-api conflicts with --role $ROLE." >&2
+        exit 1
+      fi
       PUBLIC_API=1
+      ROLE="rpc"
+      shift
+      ;;
+    --non-interactive)
+      NON_INTERACTIVE=1
       shift
       ;;
     *)
@@ -96,8 +124,27 @@ if [[ -z "$MONIKER" ]]; then
   exit 1
 fi
 
+if [[ -z "$ROLE" ]]; then
+  ROLE="fullnode"
+fi
+case "$ROLE" in
+  fullnode|rpc|validator|sentry|seed) ;;
+  *)
+    echo "ERROR: unsupported node role '$ROLE'" >&2
+    echo "Supported roles: fullnode rpc validator sentry seed" >&2
+    exit 1
+    ;;
+esac
 if [[ "${SEED_MODE}" -eq 1 && "${PUBLIC_API}" -eq 1 ]]; then
   echo "ERROR: --seed and --public-api cannot be combined."
+  exit 1
+fi
+if [[ "${SEED_MODE}" -eq 1 && "$ROLE" != seed ]]; then
+  echo "ERROR: --seed conflicts with --role $ROLE."
+  exit 1
+fi
+if [[ "${PUBLIC_API}" -eq 1 && "$ROLE" != rpc ]]; then
+  echo "ERROR: --public-api conflicts with --role $ROLE."
   exit 1
 fi
 
@@ -115,12 +162,8 @@ SERVICE_SCRIPT="${REPO_ROOT}/scripts/install/lumend_service.sh"
 ADD_PEER_SCRIPT="${REPO_ROOT}/scripts/network/add_peer.sh"
 RELOAD_PEERS_SCRIPT="${REPO_ROOT}/scripts/network/reload_peers.sh"
 
-ROLE_LABEL="fullnode / sentry"
-if [[ "${SEED_MODE}" -eq 1 ]]; then
-  ROLE_LABEL="seed"
-fi
-
-echo "=== Lumen ${ROLE_LABEL} init ==="
+echo "=== Lumen ${ROLE} init ==="
+echo "Role      : ${ROLE}"
 echo "Moniker   : ${MONIKER}"
 echo "Home      : ${NODE_HOME}"
 echo "RPC (opt) : ${RPC_URL:-<state sync disabled>}"
@@ -198,16 +241,8 @@ echo "       (this calls ./scripts/install/download_lumend.sh)"
 echo
 echo "[2/5] Joining the network as a node"
 
-JOIN_ARGS=()
-if [[ "${SEED_MODE}" -eq 1 ]]; then
-  echo "       Using seed config profile (seed_mode enabled)"
-  JOIN_ARGS+=(--seed)
-elif [[ "${PUBLIC_API}" -eq 1 ]]; then
-  echo "       Using RPC/API config profile (config/rpc)"
-  JOIN_ARGS+=(--public-api)
-else
-  echo "       Using fullnode config profile (config/fullnode)"
-fi
+JOIN_ARGS=(--role "${ROLE}")
+echo "       Using ${ROLE} config profile"
 
 # join.sh:
 #   - initializes a .lumen home
@@ -218,7 +253,7 @@ HOME="${HELPER_HOME}" "${JOIN_SCRIPT}" "${MONIKER}" "${JOIN_ARGS[@]}"
 echo
 echo "[2b/5] Reinforcing peers from networks/mainnet/peers.txt (post-join)"
 
-if [[ "${SEED_MODE}" -eq 1 ]]; then
+if [[ "$ROLE" == seed ]]; then
   echo "→ Skipping persistent_peers reload (seed mode)"
 elif [[ -n "${RELOAD_PEERS_SCRIPT}" ]]; then
   "${RELOAD_PEERS_SCRIPT}" --home "${NODE_HOME}" --no-restart
@@ -263,7 +298,7 @@ fi
 
 # Optional: push the state sync RPC node into persistent_peers before the
 # first start, so snapshot discovery works reliably through that peer.
-if [[ "${SEED_MODE}" -ne 1 && -n "${RPC_URL}" && -n "${ADD_PEER_SCRIPT}" ]]; then
+if [[ "$ROLE" != seed && -n "${RPC_URL}" && -n "${ADD_PEER_SCRIPT}" ]]; then
   echo
   echo "[4b/5] Adding state sync RPC as a persistent peer"
 
@@ -312,7 +347,7 @@ if [[ "${SEED_MODE}" -ne 1 && -n "${RPC_URL}" && -n "${ADD_PEER_SCRIPT}" ]]; the
   fi
 fi
 
-if [[ "${SEED_MODE}" -eq 1 ]]; then
+if [[ "$ROLE" == seed ]]; then
   echo
   echo "→ Skipping persistent_peers reload (seed mode)"
 elif [[ -n "${RELOAD_PEERS_SCRIPT}" ]]; then
@@ -350,6 +385,10 @@ else
     echo
     echo "A lumend systemd service is currently RUNNING."
     echo "Overwriting it will stop and restart the node."
+    if [[ "${NON_INTERACTIVE}" -eq 1 ]]; then
+      echo "ERROR: lumend.service is already running; refusing replacement in non-interactive mode." >&2
+      exit 1
+    fi
     read -r -p "Do you want to stop the service and continue? [y/N] " ANSWER
     ANSWER="${ANSWER:-N}"
     if ! [[ "${ANSWER}" =~ ^[Yy]$ ]]; then
@@ -377,6 +416,10 @@ else
   else
     echo
     echo "A lumend systemd service already exists but is stopped."
+    if [[ "${NON_INTERACTIVE}" -eq 1 ]]; then
+      echo "ERROR: lumend.service already exists; refusing replacement in non-interactive mode." >&2
+      exit 1
+    fi
     read -r -p "Do you want to overwrite it with the new configuration? [y/N] " ANSWER
     ANSWER="${ANSWER:-N}"
     if ! [[ "${ANSWER}" =~ ^[Yy]$ ]]; then
@@ -390,36 +433,6 @@ else
       exit 1
     fi
   fi
-fi
-
-if [[ "${SEED_MODE}" -eq 1 ]]; then
-  echo
-  echo "[seed] Post-start hardening (enforcing seed config)"
-
-  CFG_TOML="${NODE_HOME}/config/config.toml"
-  CFG_APP="${NODE_HOME}/config/app.toml"
-
-  if systemctl is-active --quiet lumend 2>/dev/null; then
-    echo "→ Stopping lumend for seed hardening"
-    sudo systemctl stop lumend || true
-  fi
-
-  if [[ -f "${CFG_TOML}" ]]; then
-    sed -i 's|^persistent_peers *=.*|persistent_peers = ""|' "${CFG_TOML}"
-    sed -i 's/^pex *=.*/pex = true/' "${CFG_TOML}"
-    sed -i 's/^seed_mode *=.*/seed_mode = true/' "${CFG_TOML}"
-    sed -i 's/^indexer *=.*/indexer = "null"/' "${CFG_TOML}"
-    sed -i '/^\[rpc\]/,/^\[/ s|^laddr *=.*|laddr = ""|' "${CFG_TOML}"
-  fi
-
-  if [[ -f "${CFG_APP}" ]]; then
-    sed -i '/^\[api\]/,/^\[/ s/^enable *=.*/enable = false/' "${CFG_APP}"
-    sed -i '/^\[grpc\]/,/^\[/ s/^enable *=.*/enable = false/' "${CFG_APP}"
-    sed -i '/^\[grpc-web\]/,/^\[/ s/^enable *=.*/enable = false/' "${CFG_APP}"
-  fi
-
-  echo "→ Starting lumend after seed hardening"
-  sudo systemctl start lumend || true
 fi
 
 echo

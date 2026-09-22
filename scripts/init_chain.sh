@@ -162,6 +162,10 @@ echo "       (./scripts/network/bootstrap.sh ${MONIKER})"
 #   - creates a .lumen home and a first-node.bak backup
 HOME="${HELPER_HOME}" "${BOOTSTRAP_SCRIPT}" "${MONIKER}"
 
+# Record the non-secret role selected by this initial-chain deployment.
+printf 'role=validator\n' > "${NODE_HOME}/validator-kit-role"
+chmod 644 "${NODE_HOME}/validator-kit-role"
+
 BACKUP_DIR="${NODE_HOME}/first-node.bak"
 
 echo

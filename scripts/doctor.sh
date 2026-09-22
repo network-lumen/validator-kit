@@ -16,6 +16,7 @@ STATUS_JSON=""
 LATEST_HEIGHT=""
 EXPECTED_CHAIN_ID=""
 RPC_URL=""
+ROLE="unknown"
 
 usage() {
   cat <<EOF
@@ -103,6 +104,22 @@ echo "Lumen Node Doctor"
 echo "Home: $HOME_DIR"
 echo
 
+ROLE_FILE="$HOME_DIR/validator-kit-role"
+if [[ -f "$ROLE_FILE" ]]; then
+  ROLE="$(awk -F= '$1 == "role" { print $2; exit }' "$ROLE_FILE")"
+  case "$ROLE" in
+    fullnode|rpc|validator|sentry|seed)
+      pass "Role" "$ROLE"
+      ;;
+    *)
+      ROLE="unknown"
+      warn "Role" "invalid role metadata in $ROLE_FILE"
+      ;;
+  esac
+else
+  skip "Role" "role metadata not present"
+fi
+
 # Binary and node-home checks.
 if [[ -f "$BIN_PATH" && -x "$BIN_PATH" ]]; then
   BINARY_VERSION="$($BIN_PATH version 2>&1 || true)"
@@ -177,7 +194,11 @@ fi
 if [[ -f "$CFG_TOML" ]]; then
   RPC_LADDR="$(toml_value "$CFG_TOML" "[rpc]" laddr || true)"
   if [[ -z "$RPC_LADDR" ]]; then
-    fail "RPC config" "[rpc].laddr is missing"
+    if [[ "$ROLE" == seed ]]; then
+      pass "RPC config" "disabled for seed role"
+    else
+      fail "RPC config" "[rpc].laddr is missing"
+    fi
   elif RPC_PORT="$(port_from_address "$RPC_LADDR")"; then
     RPC_HOST="${RPC_LADDR#tcp://}"
     RPC_HOST="${RPC_HOST%:*}"
@@ -314,6 +335,29 @@ if [[ -f "$APP_TOML" ]]; then
   check_app_listener "gRPC" grpc address
 else
   skip "API/gRPC" "app.toml is unavailable"
+fi
+
+if [[ -f "$CFG_TOML" && -f "$APP_TOML" && "$ROLE" != unknown ]]; then
+  P2P_LADDR="$(toml_value "$CFG_TOML" "[p2p]" laddr || true)"
+  P2P_HOST="${P2P_LADDR#tcp://}"
+  P2P_HOST="${P2P_HOST%:*}"
+  API_ENABLE="$(toml_value "$APP_TOML" "[api]" enable || true)"
+  GRPC_ENABLE="$(toml_value "$APP_TOML" "[grpc]" enable || true)"
+  SEED_MODE_VALUE="$(toml_value "$CFG_TOML" "[p2p]" seed_mode || true)"
+  case "$ROLE" in
+    rpc)
+      [[ "$P2P_HOST" == "0.0.0.0" || "$P2P_HOST" == "[::]" ]] && pass "Role listeners" "rpc role exposes P2P publicly" || warn "Role listeners" "rpc role P2P is not publicly bound"
+      [[ "$API_ENABLE" == "true" && "$GRPC_ENABLE" == "true" ]] && pass "Role services" "public API and gRPC enabled" || warn "Role services" "rpc role expects API and gRPC enabled"
+      ;;
+    fullnode|validator|sentry)
+      [[ "$P2P_HOST" == "0.0.0.0" || "$P2P_HOST" == "[::]" ]] && pass "Role listeners" "$ROLE role exposes P2P publicly" || warn "Role listeners" "$ROLE role P2P is not publicly bound"
+      [[ "$API_ENABLE" == "false" && "$GRPC_ENABLE" == "true" ]] && pass "Role services" "API disabled and gRPC enabled" || warn "Role services" "$ROLE role expects API disabled and gRPC enabled"
+      ;;
+    seed)
+      [[ "$SEED_MODE_VALUE" == "true" ]] && pass "Seed mode" "p2p.seed_mode=true" || fail "Seed mode" "p2p.seed_mode is not enabled"
+      [[ "$API_ENABLE" == "false" && "$GRPC_ENABLE" == "false" ]] && pass "Role services" "API and gRPC disabled" || warn "Role services" "seed role expects API and gRPC disabled"
+      ;;
+  esac
 fi
 
 # State-sync visibility is local only; remote trust parameters are not revalidated.

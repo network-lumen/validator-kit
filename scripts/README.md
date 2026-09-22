@@ -9,6 +9,10 @@ binary, node home, service, local RPC, chain ID, sync state, peers, listeners,
 disk space, and sensitive-file warnings without starting, stopping, or repairing
 the node.
 
+Use `./scripts/join.sh <moniker> --role ROLE` or
+`./scripts/init_node.sh <moniker> --role ROLE` for `fullnode`, `rpc`,
+`validator`, `sentry`, or `seed`. The default is `fullnode`.
+
 | Area | Commands |
 | --- | --- |
 | Node setup | `./scripts/join.sh`, `./scripts/init_seed.sh` |

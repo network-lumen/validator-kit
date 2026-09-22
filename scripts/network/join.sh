@@ -2,19 +2,18 @@
 set -euo pipefail
 
 ###############################################
-# Lumen — Join an existing network (full/sentry/RPC)
+# Lumen - Join an existing network with a selected node role
 # Fully offline — config & genesis come from repo
 # Seeds/persistent peers taken from networks/mainnet/*.txt
 #
-# This helper only creates a non-validator node (fullnode / sentry / RPC).
-# Becoming a validator (PQC + create-validator + staking) is handled by the
-# dedicated blockchain scripts under scripts/blockchain/.
+# Selecting the validator role only installs validator-suitable configuration;
+# validator registration and staking remain separate blockchain workflows.
 ###############################################
 
 # --- Arguments ---------------------------------------------------------------
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: join.sh <moniker> [--public-api] [--seed] [--force]"
+  echo "Usage: join.sh <moniker> [--role ROLE] [--force]"
   exit 1
 fi
 
@@ -25,19 +24,63 @@ HOME_DIR="$HOME/.lumen"
 FORCE=0
 PUBLIC_API=0
 SEED_MODE=0
+ROLE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --public-api)  PUBLIC_API=1 ;;
-    --seed)        SEED_MODE=1 ;;
+    --role)
+      [[ $# -ge 2 ]] || { echo "ERROR: --role requires a value." >&2; exit 1; }
+      NEW_ROLE="$2"
+      if [[ -n "$ROLE" && "$ROLE" != "$NEW_ROLE" ]]; then
+        echo "ERROR: conflicting node roles '$ROLE' and '$NEW_ROLE'." >&2
+        exit 1
+      fi
+      ROLE="$NEW_ROLE"
+      shift
+      ;;
+    --public-api)
+      if [[ -n "$ROLE" && "$ROLE" != rpc ]]; then
+        echo "ERROR: --public-api conflicts with --role $ROLE" >&2
+        exit 1
+      fi
+      PUBLIC_API=1
+      ROLE="rpc"
+      ;;
+    --seed)
+      if [[ -n "$ROLE" && "$ROLE" != seed ]]; then
+        echo "ERROR: --seed conflicts with --role $ROLE" >&2
+        exit 1
+      fi
+      SEED_MODE=1
+      ROLE="seed"
+      ;;
     --force)       FORCE=1 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
   shift
 done
 
+if [[ -z "$ROLE" ]]; then
+  ROLE="fullnode"
+fi
+case "$ROLE" in
+  fullnode|rpc|validator|sentry|seed) ;;
+  *)
+    echo "ERROR: unsupported node role '$ROLE'" >&2
+    echo "Supported roles: fullnode rpc validator sentry seed" >&2
+    exit 1
+    ;;
+esac
 if [[ "$SEED_MODE" -eq 1 && "$PUBLIC_API" -eq 1 ]]; then
   echo "❌ --seed and --public-api cannot be combined" >&2
+  exit 1
+fi
+if [[ "$SEED_MODE" -eq 1 && "$ROLE" != seed ]]; then
+  echo "ERROR: --seed conflicts with --role $ROLE" >&2
+  exit 1
+fi
+if [[ "$PUBLIC_API" -eq 1 && "$ROLE" != rpc ]]; then
+  echo "ERROR: --public-api conflicts with --role $ROLE" >&2
   exit 1
 fi
 
@@ -56,6 +99,9 @@ SEEDS_FILE="$REPO_ROOT/networks/mainnet/seeds.txt"
 PEERS_FILE="$REPO_ROOT/networks/mainnet/peers.txt"
 CFG_FULL="$REPO_ROOT/config/fullnode"
 CFG_RPC="$REPO_ROOT/config/rpc"
+CFG_VALIDATOR="$REPO_ROOT/config/validator"
+CFG_SENTRY="$REPO_ROOT/config/sentry"
+CFG_SEED="$REPO_ROOT/config/seed"
 
 # -----------------------------------------------------------------------------
 # Check binaries (local)
@@ -103,26 +149,20 @@ echo "[1/5] Init home: $HOME_DIR"
 "$BIN" init "$MONIKER" --chain-id lumen --home "$HOME_DIR" >/dev/null
 
 # -----------------------------------------------------------------------------
-# Install fullnode config
+# Install the selected role profile
 # -----------------------------------------------------------------------------
 
 echo "[2/5] Installing config"
 
-CFG_SRC="$CFG_FULL"
-PROFILE_LABEL="fullnode"
-
-if [[ "$SEED_MODE" -eq 1 ]]; then
-  echo "→ Using seed profile (fullnode config with seed_mode enabled)"
-  PROFILE_LABEL="seed"
-elif [[ "$PUBLIC_API" -eq 1 ]]; then
-  if [[ ! -d "$CFG_RPC" ]]; then
-    echo "❌ --public-api requested but $CFG_RPC is missing" >&2
-    exit 1
-  fi
-  echo "→ Using RPC/API profile from config/rpc"
-  CFG_SRC="$CFG_RPC"
-  PROFILE_LABEL="rpc"
-fi
+case "$ROLE" in
+  fullnode) CFG_SRC="$CFG_FULL" ;;
+  rpc) CFG_SRC="$CFG_RPC" ;;
+  validator) CFG_SRC="$CFG_VALIDATOR" ;;
+  sentry) CFG_SRC="$CFG_SENTRY" ;;
+  seed) CFG_SRC="$CFG_SEED" ;;
+esac
+[[ -d "$CFG_SRC" ]] || { echo "ERROR: role profile is missing: $CFG_SRC" >&2; exit 1; }
+echo "→ Using $ROLE profile from ${CFG_SRC#$REPO_ROOT/}"
 
 cp "$CFG_SRC/app.toml"    "$HOME_DIR/config/app.toml"
 cp "$CFG_SRC/client.toml" "$HOME_DIR/config/client.toml"
@@ -132,27 +172,10 @@ CFG_TOML="$HOME_DIR/config/config.toml"
 CFG_APP="$HOME_DIR/config/app.toml"
 
 sed -i "s|^seeds *=.*|seeds = \"$SEEDS\"|" "$CFG_TOML"
-sed -i "s|^persistent_peers *=.*|persistent_peers = \"$PEERS\"|" "$CFG_TOML"
-
-if [[ "$SEED_MODE" -eq 1 ]]; then
-  echo "→ Applying seed node tweaks (p2p.seed_mode=true, tx_index=null, RPC/API/gRPC disabled)"
-  # Ensure PEX is enabled and seed_mode is true.
-  sed -i 's/^pex *=.*/pex = true/' "$CFG_TOML"
-  sed -i 's/^seed_mode *=.*/seed_mode = true/' "$CFG_TOML"
-  # Seed nodes should not use static persistent peers.
+if [[ "$ROLE" == seed ]]; then
   sed -i 's|^persistent_peers *=.*|persistent_peers = ""|' "$CFG_TOML"
-  # Disable tx indexer to reduce disk IO.
-  sed -i 's/^indexer *=.*/indexer = "null"/' "$CFG_TOML"
-  # Explicitly disable RPC listener (no JSON-RPC endpoint on seeds).
-  sed -i '/^\[rpc\]/,/^\[/ s|^laddr *=.*|laddr = ""|' "$CFG_TOML"
-  # Optionally tighten peer counts to avoid runaway outbound dials.
-  sed -i '/^\[p2p\]/,/^\[/ s/^max_num_outbound_peers *=.*/max_num_outbound_peers = 20/' "$CFG_TOML"
-  # Harden application-level APIs: keep API off and disable gRPC / gRPC-Web.
-  if [[ -f "$CFG_APP" ]]; then
-    sed -i '/^\[api\]/,/^\[/ s/^enable *=.*/enable = false/' "$CFG_APP"
-    sed -i '/^\[grpc\]/,/^\[/ s/^enable *=.*/enable = false/' "$CFG_APP"
-    sed -i '/^\[grpc-web\]/,/^\[/ s/^enable *=.*/enable = false/' "$CFG_APP"
-  fi
+else
+  sed -i "s|^persistent_peers *=.*|persistent_peers = \"$PEERS\"|" "$CFG_TOML"
 fi
 
 # -----------------------------------------------------------------------------
@@ -169,10 +192,15 @@ CHAIN_ID="$("$JQ" -r '.chain_id' "$GENESIS_SRC")"
 
 sed -i "s|^chain-id *=.*|chain-id = \"$CHAIN_ID\"|" "$HOME_DIR/config/client.toml"
 
+# Non-secret role identity consumed by Doctor and future tooling.
+printf 'role=%s\n' "$ROLE" > "$HOME_DIR/validator-kit-role"
+chmod 644 "$HOME_DIR/validator-kit-role"
+
 # -----------------------------------------------------------------------------
 # Done
 # -----------------------------------------------------------------------------
 
 echo "✔ DONE"
+echo "Role: $ROLE"
 echo "Start node:"
 echo "  lumend start --home $HOME_DIR"
