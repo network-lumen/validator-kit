@@ -33,6 +33,25 @@ hash_dir() {
     | sha256sum | awk '{print $1}'
 }
 
+archive_is_safe() {
+  local archive="$1" entry normalized type
+  tar -tzf "$archive" >/dev/null 2>&1 || return 1
+  while IFS= read -r entry; do
+    [[ "$entry" != /* && "$entry" != .. && "$entry" != ../* && "$entry" != */.. && "$entry" != */../* ]] || return 1
+    normalized="$(printf '%s' "$entry" | sed 's#^\./##')"
+    case "$normalized" in
+      data|data/*|snapshot.json) ;;
+      *) return 1 ;;
+    esac
+  done < <(tar -tzf "$archive")
+  while IFS= read -r type; do
+    case "$(printf '%s' "$type" | cut -c1)" in
+      -|d) ;;
+      *) return 1 ;;
+    esac
+  done < <(tar -tvzf "$archive")
+}
+
 idx=1
 for f in "${FILES[@]}"; do
     fname=$(basename "$f")
@@ -63,7 +82,14 @@ for f in "${FILES[@]}"; do
 
     if [[ "$MODE" == "--verify" ]]; then
         tmp=$(mktemp -d)
-        tar -xzf "$f" -C "$tmp"
+        if ! archive_is_safe "$f"; then
+            echo "     Integrity: unsafe archive contents"
+            rm -rf "$tmp"
+            echo ""
+            ((idx++))
+            continue
+        fi
+        tar -xzf "$f" -C "$tmp" --no-same-owner --no-same-permissions
 
         if [[ ! -f "$tmp/snapshot.json" ]]; then
             echo "     Integrity: snapshot.json missing"

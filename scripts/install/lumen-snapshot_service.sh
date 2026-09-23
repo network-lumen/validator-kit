@@ -22,20 +22,20 @@ else
   DEFAULT_USER_HOME="${HOME:-/root}"
 fi
 
-read -p "Node HOME directory? (${DEFAULT_USER_HOME}/.lumen): " HOME_DIR
+read -r -p "Node HOME directory? (${DEFAULT_USER_HOME}/.lumen): " HOME_DIR
 HOME_DIR=${HOME_DIR:-${DEFAULT_USER_HOME}/.lumen}
 
-read -p "Block interval between snapshots? (50): " INTERVAL
+read -r -p "Block interval between snapshots? (50): " INTERVAL
 INTERVAL=${INTERVAL:-50}
 
-read -p "Snapshots to keep? (10): " RETENTION
+read -r -p "Snapshots to keep? (10): " RETENTION
 RETENTION=${RETENTION:-10}
 
-read -p "Snapshot directory? (${DEFAULT_USER_HOME}/snapshots): " SNAP_DIR
+read -r -p "Snapshot directory? (${DEFAULT_USER_HOME}/snapshots): " SNAP_DIR
 SNAP_DIR=${SNAP_DIR:-${DEFAULT_USER_HOME}/snapshots}
 
 echo ""
-read -p "Install systemd service? (Y/n): " INSTALL_SYSTEMD
+read -r -p "Install systemd service? (Y/n): " INSTALL_SYSTEMD
 INSTALL_SYSTEMD=${INSTALL_SYSTEMD:-Y}
 
 RPC="http://127.0.0.1:26657"
@@ -63,6 +63,21 @@ hash_dir() {
         sha256sum "$dir/$rel" | awk '{print $1}'
       done \
     | sha256sum | awk '{print $1}'
+}
+
+wait_for_node_stop() {
+    for _ in {1..20}; do
+        if systemctl is-active --quiet "$SERVICE_NAME"; then
+            sleep 0.5
+            continue
+        fi
+        if command -v pgrep >/dev/null 2>&1 && pgrep -x lumend >/dev/null 2>&1; then
+            sleep 0.5
+            continue
+        fi
+        return 0
+    done
+    return 1
 }
 
 mkdir -p "$SNAP_DIR"
@@ -105,7 +120,12 @@ while true; do
     fi
 
     echo "[*] Stopping $SERVICE_NAME for snapshot..."
-    systemctl stop "$SERVICE_NAME" || true
+    if ! systemctl stop "$SERVICE_NAME" || ! wait_for_node_stop; then
+        echo "[error] failed to stop and verify $SERVICE_NAME; snapshot skipped"
+        systemctl start "$SERVICE_NAME" || true
+        sleep 1
+        continue
+    fi
 
     TMP_DIR=$(mktemp -d)
     if ! cp -r "$HOME_DIR/data" "$TMP_DIR/data" 2>/dev/null; then
@@ -117,7 +137,12 @@ while true; do
     fi
 
     echo "[*] Starting $SERVICE_NAME again..."
-    systemctl start "$SERVICE_NAME" || true
+    if ! systemctl start "$SERVICE_NAME"; then
+        echo "[error] failed to restart $SERVICE_NAME; snapshot skipped"
+        rm -rf "$TMP_DIR"
+        sleep 1
+        continue
+    fi
 
     DATA_HASH=$(hash_dir "$TMP_DIR/data")
     now_ts=$(date +%s)

@@ -20,7 +20,7 @@ Use `./scripts/join.sh <moniker> --role ROLE` or
 | Validator | `./scripts/blockchain/become_validator.sh`, `./scripts/blockchain/stake_tokens.sh` |
 | Peers and security | `./scripts/network/` |
 | Installation | `./scripts/install/` |
-| Snapshots | `./scripts/snapshot/` |
+| Snapshots | `./scripts/snapshot/` (`restore_snapshot.sh` preserves validator signing state) |
 
 Use the [join guide](../docs/guides/join-and-sync.md) and
 [validator guide](../docs/guides/become-validator.md) for supported workflows.
