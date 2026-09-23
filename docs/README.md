@@ -6,6 +6,7 @@
 - [Manual node setup](guides/manual-node-setup.md)
 - [Become a validator and stake](guides/become-validator.md)
 - [Snapshot recovery](guides/snapshot-recovery.md)
+- [Upgrade management](guides/upgrade-management.md)
 
 ## Concepts
 

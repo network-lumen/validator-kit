@@ -21,6 +21,7 @@ Use `./scripts/join.sh <moniker> --role ROLE` or
 | Peers and security | `./scripts/network/` |
 | Installation | `./scripts/install/` |
 | Snapshots | `./scripts/snapshot/` (`restore_snapshot.sh` preserves validator signing state) |
+| Upgrades | `./scripts/upgrade/` (prepare verified Cosmovisor binaries and inspect status) |
 
 Use the [join guide](../docs/guides/join-and-sync.md) and
 [validator guide](../docs/guides/become-validator.md) for supported workflows.

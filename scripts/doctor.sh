@@ -17,6 +17,8 @@ LATEST_HEIGHT=""
 EXPECTED_CHAIN_ID=""
 RPC_URL=""
 ROLE="unknown"
+SERVICE_MODE="UNKNOWN"
+ACTIVE_BINARY_PATH="UNKNOWN"
 
 usage() {
   cat <<EOF
@@ -100,6 +102,46 @@ socket_has_port() {
   ss -ltnH 2>/dev/null | awk -v wanted=":$port" '$4 ~ wanted "$" { found = 1 } END { exit(found ? 0 : 1) }'
 }
 
+isolated_binary_version() {
+  local binary="$1" temp output status
+  temp="$(mktemp -d)"
+  if output="$(HOME="$temp" XDG_CONFIG_HOME="$temp/.config" XDG_DATA_HOME="$temp/.local/share" XDG_CACHE_HOME="$temp/.cache" "$binary" version 2>&1)"; then
+    status=0
+  else
+    status=$?
+  fi
+  rm -rf -- "$temp"
+  printf '%s' "$output"
+  return "$status"
+}
+
+detect_execution_model() {
+  local service_exec="" main_pid="" child_pid=""
+  if command -v systemctl >/dev/null 2>&1; then
+    service_exec="$(systemctl show -p ExecStart --value lumend.service 2>/dev/null || true)"
+    if [[ -z "$service_exec" && -f /etc/systemd/system/lumend.service ]]; then
+      service_exec="$(awk -F= '$1 == \"ExecStart\" { print substr($0, index($0, \"=\") + 1); exit }' /etc/systemd/system/lumend.service)"
+    fi
+    main_pid="$(systemctl show -p MainPID --value lumend.service 2>/dev/null || true)"
+  fi
+  if [[ "$service_exec" == *cosmovisor* ]]; then
+    SERVICE_MODE="COSMOVISOR"
+  elif [[ "$service_exec" == *lumend* ]]; then
+    SERVICE_MODE="DIRECT"
+  fi
+  if [[ "$main_pid" =~ ^[1-9][0-9]*$ && -e "/proc/$main_pid/exe" ]]; then
+    ACTIVE_BINARY_PATH="$(readlink -f "/proc/$main_pid/exe")"
+    if [[ "$SERVICE_MODE" == COSMOVISOR && "$ACTIVE_BINARY_PATH" == *cosmovisor* ]] && command -v pgrep >/dev/null 2>&1; then
+      child_pid="$(pgrep -P "$main_pid" -x lumend | head -n 1 || true)"
+      if [[ "$child_pid" =~ ^[1-9][0-9]*$ && -e "/proc/$child_pid/exe" ]]; then
+        ACTIVE_BINARY_PATH="$(readlink -f "/proc/$child_pid/exe")"
+      else
+        ACTIVE_BINARY_PATH="UNKNOWN"
+      fi
+    fi
+  fi
+}
+
 echo "Lumen Node Doctor"
 echo "Home: $HOME_DIR"
 echo
@@ -121,15 +163,35 @@ else
 fi
 
 # Binary and node-home checks.
-if [[ -f "$BIN_PATH" && -x "$BIN_PATH" ]]; then
-  BINARY_VERSION="$($BIN_PATH version 2>&1 || true)"
-  if [[ -n "$BINARY_VERSION" ]]; then
-    pass "Binary" "${BIN_PATH}: ${BINARY_VERSION//$'\n'/ }"
+detect_execution_model
+if [[ "$SERVICE_MODE" == COSMOVISOR ]]; then
+  pass "Execution" "Cosmovisor service model"
+  if [[ "$ACTIVE_BINARY_PATH" != UNKNOWN && -x "$ACTIVE_BINARY_PATH" ]]; then
+    ACTIVE_VERSION="$(isolated_binary_version "$ACTIVE_BINARY_PATH" 2>/dev/null || true)"
+    if [[ -n "$ACTIVE_VERSION" ]]; then
+      pass "Running binary" "$ACTIVE_BINARY_PATH: ${ACTIVE_VERSION//$'\n'/ }"
+    else
+      warn "Running binary" "version could not be read from $ACTIVE_BINARY_PATH"
+    fi
   else
-    fail "Binary" "$BIN_PATH version returned no output."
+    warn "Running binary" "active Cosmovisor child could not be determined"
   fi
 else
-  fail "Binary" "$BIN_PATH is missing or not executable."
+  if [[ "$SERVICE_MODE" == DIRECT ]]; then
+    pass "Execution" "Direct lumend service model"
+  else
+    skip "Execution" "service execution model is unknown"
+  fi
+  if [[ -f "$BIN_PATH" && -x "$BIN_PATH" ]]; then
+    BINARY_VERSION="$(isolated_binary_version "$BIN_PATH" 2>&1 || true)"
+    if [[ -n "$BINARY_VERSION" ]]; then
+      pass "Configured binary" "${BIN_PATH}: ${BINARY_VERSION//$'\n'/ }"
+    else
+      fail "Configured binary" "$BIN_PATH version returned no output."
+    fi
+  else
+    fail "Configured binary" "$BIN_PATH is missing or not executable."
+  fi
 fi
 
 if [[ -d "$HOME_DIR" ]]; then
@@ -346,16 +408,16 @@ if [[ -f "$CFG_TOML" && -f "$APP_TOML" && "$ROLE" != unknown ]]; then
   SEED_MODE_VALUE="$(toml_value "$CFG_TOML" "[p2p]" seed_mode || true)"
   case "$ROLE" in
     rpc)
-      [[ "$P2P_HOST" == "0.0.0.0" || "$P2P_HOST" == "[::]" ]] && pass "Role listeners" "rpc role exposes P2P publicly" || warn "Role listeners" "rpc role P2P is not publicly bound"
-      [[ "$API_ENABLE" == "true" && "$GRPC_ENABLE" == "true" ]] && pass "Role services" "public API and gRPC enabled" || warn "Role services" "rpc role expects API and gRPC enabled"
+      if [[ "$P2P_HOST" == "0.0.0.0" || "$P2P_HOST" == "[::]" ]]; then pass "Role listeners" "rpc role exposes P2P publicly"; else warn "Role listeners" "rpc role P2P is not publicly bound"; fi
+      if [[ "$API_ENABLE" == "true" && "$GRPC_ENABLE" == "true" ]]; then pass "Role services" "public API and gRPC enabled"; else warn "Role services" "rpc role expects API and gRPC enabled"; fi
       ;;
     fullnode|validator|sentry)
-      [[ "$P2P_HOST" == "0.0.0.0" || "$P2P_HOST" == "[::]" ]] && pass "Role listeners" "$ROLE role exposes P2P publicly" || warn "Role listeners" "$ROLE role P2P is not publicly bound"
-      [[ "$API_ENABLE" == "false" && "$GRPC_ENABLE" == "true" ]] && pass "Role services" "API disabled and gRPC enabled" || warn "Role services" "$ROLE role expects API disabled and gRPC enabled"
+      if [[ "$P2P_HOST" == "0.0.0.0" || "$P2P_HOST" == "[::]" ]]; then pass "Role listeners" "$ROLE role exposes P2P publicly"; else warn "Role listeners" "$ROLE role P2P is not publicly bound"; fi
+      if [[ "$API_ENABLE" == "false" && "$GRPC_ENABLE" == "true" ]]; then pass "Role services" "API disabled and gRPC enabled"; else warn "Role services" "$ROLE role expects API disabled and gRPC enabled"; fi
       ;;
     seed)
-      [[ "$SEED_MODE_VALUE" == "true" ]] && pass "Seed mode" "p2p.seed_mode=true" || fail "Seed mode" "p2p.seed_mode is not enabled"
-      [[ "$API_ENABLE" == "false" && "$GRPC_ENABLE" == "false" ]] && pass "Role services" "API and gRPC disabled" || warn "Role services" "seed role expects API and gRPC disabled"
+      if [[ "$SEED_MODE_VALUE" == "true" ]]; then pass "Seed mode" "p2p.seed_mode=true"; else fail "Seed mode" "p2p.seed_mode is not enabled"; fi
+      if [[ "$API_ENABLE" == "false" && "$GRPC_ENABLE" == "false" ]]; then pass "Role services" "API and gRPC disabled"; else warn "Role services" "seed role expects API and gRPC disabled"; fi
       ;;
   esac
 fi
@@ -412,7 +474,7 @@ done
 
 if command -v df >/dev/null 2>&1 && [[ -d "$HOME_DIR" ]]; then
   DISK_LINE="$(df -P -k "$HOME_DIR" 2>/dev/null | tail -n 1)"
-  read -r _ blocks_total blocks_used blocks_available usage _ <<< "$DISK_LINE"
+  read -r _ _ _ blocks_available usage _ <<< "$DISK_LINE"
   if [[ "$blocks_available" =~ ^[0-9]+$ && "$usage" =~ ^[0-9]+%$ ]]; then
     available_gb=$((blocks_available / 1024 / 1024))
     usage_number="${usage%%%}"
