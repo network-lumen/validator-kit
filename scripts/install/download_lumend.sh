@@ -60,11 +60,32 @@ else
   CHECKSUM_URL="${LUMEN_CHECKSUM_URL:-${DEFAULT_BASE_URL}/SHA256SUMS}"
 fi
 
+run_isolated_version() {
+  local binary="$1"
+  local isolated_home
+  local status
+
+  isolated_home="$(mktemp -d)"
+  if (
+    export HOME="$isolated_home"
+    export XDG_CONFIG_HOME="$isolated_home/.config"
+    export XDG_DATA_HOME="$isolated_home/.local/share"
+    export XDG_CACHE_HOME="$isolated_home/.cache"
+    "$binary" version
+  ); then
+    status=0
+  else
+    status=$?
+  fi
+  rm -rf -- "$isolated_home"
+  return "$status"
+}
+
 TARGET_DIR="$(dirname "$TARGET")"
 if [[ -e "$TARGET" ]]; then
   EXISTING_VERSION="unavailable"
   if [[ -x "$TARGET" ]]; then
-    EXISTING_VERSION="$($TARGET version 2>&1 || true)"
+    EXISTING_VERSION="$(run_isolated_version "$TARGET" 2>&1 || true)"
     EXISTING_VERSION="${EXISTING_VERSION//$'\n'/ }"
   fi
   echo "Existing binary: $TARGET"
@@ -145,7 +166,7 @@ if [[ ! -f "$CANDIDATE" || ! -x "$CANDIDATE" ]]; then
   exit 1
 fi
 
-VERSION_OUTPUT="$($CANDIDATE version 2>&1)" || {
+VERSION_OUTPUT="$(run_isolated_version "$CANDIDATE" 2>&1)" || {
   echo "ERROR: extracted binary failed to report its version." >&2
   exit 1
 }

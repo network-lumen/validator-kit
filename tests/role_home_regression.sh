@@ -16,6 +16,8 @@ cat > "${FIXTURE}/repo/bin/lumend" <<'EOF'
 set -euo pipefail
 
 if [[ "${1:-}" == version ]]; then
+  mkdir -p "${HOME}/.lumen"
+  printf '%s\n' "${HOME}" > "${LUMEN_VERSION_LOG:?}"
   echo "lumend v1.4.3"
   exit 0
 fi
@@ -40,13 +42,12 @@ exit 0
 EOF
 chmod 0755 "${FIXTURE}/repo/bin/lumend"
 
-cat > "${FIXTURE}/repo/scripts/install/download_lumend.sh" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-: "${LUMEN_TARGET:?init_node must pass the selected binary target}"
-printf '%s\n' "${LUMEN_TARGET}" > "${LUMEN_TARGET_LOG:?}"
-EOF
-chmod 0755 "${FIXTURE}/repo/scripts/install/download_lumend.sh"
+tar -czf "${FIXTURE}/linux-amd64-v1.4.3.tar.gz" \
+  --transform='s,^lumend$,linux-amd64-v1.4.3,' \
+  -C "${FIXTURE}/repo/bin" lumend
+sha256sum "${FIXTURE}/linux-amd64-v1.4.3.tar.gz" \
+  | awk '{print $1 "  linux-amd64-v1.4.3.tar.gz"}' \
+  > "${FIXTURE}/SHA256SUMS"
 
 cat > "${FIXTURE}/repo/scripts/install/lumend_service.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -86,11 +87,14 @@ run_init() {
   local role="$1"
   local home="$2"
   local fail_init="${3:-0}"
-  LUMEN_HOME="${home}" \
-  LUMEN_TARGET="${FIXTURE}/bin/lumend" \
-  LUMEN_TARGET_LOG="${FIXTURE}/target.log" \
+  rm -f "${FIXTURE}/repo/bin/lumend"
+  LUMEN_RELEASE_TAG=v1.4.3 \
+  LUMEN_RELEASE_URL="file://${FIXTURE}/linux-amd64-v1.4.3.tar.gz" \
+  LUMEN_CHECKSUM_URL="file://${FIXTURE}/SHA256SUMS" \
+  LUMEN_TARGET="${FIXTURE}/repo/bin/lumend" \
+  LUMEN_VERSION_LOG="${FIXTURE}/version-${role}.log" \
   LUMEN_FAKE_FAIL_INIT="${fail_init}" \
-  HOME="${FIXTURE}/operator" \
+  HOME="${FIXTURE}/${role}" \
   PATH="${FIXTURE}/mock:${PATH}" \
     "${FIXTURE}/repo/scripts/init_node.sh" "fixture-${role}" --role "${role}" --non-interactive
 }
@@ -99,7 +103,9 @@ for role in fullnode validator; do
   home="${FIXTURE}/${role}/.lumen"
   run_init "${role}" "${home}" >/dev/null
   [[ -f "${home}/validator-kit-role" ]]
-  [[ "$(cat "${FIXTURE}/target.log")" == "${FIXTURE}/bin/lumend" ]]
+  version_home="$(cat "${FIXTURE}/version-${role}.log")"
+  [[ "${version_home}" != "${home}" ]]
+  [[ ! -e "${version_home}" ]]
 done
 
 failed_home="${FIXTURE}/failed/.lumen"
@@ -112,7 +118,15 @@ fi
 existing_home="${FIXTURE}/existing/.lumen"
 mkdir -p "${existing_home}"
 printf 'keep-me\n' > "${existing_home}/sentinel"
-if run_init validator "${existing_home}" >/dev/null 2>&1; then
+if LUMEN_HOME="${existing_home}" \
+  LUMEN_RELEASE_TAG=v1.4.3 \
+  LUMEN_RELEASE_URL="file://${FIXTURE}/linux-amd64-v1.4.3.tar.gz" \
+  LUMEN_CHECKSUM_URL="file://${FIXTURE}/SHA256SUMS" \
+  LUMEN_TARGET="${FIXTURE}/repo/bin/lumend" \
+  LUMEN_VERSION_LOG="${FIXTURE}/version-existing.log" \
+  HOME="${FIXTURE}/existing" \
+  PATH="${FIXTURE}/mock:${PATH}" \
+    "${FIXTURE}/repo/scripts/init_node.sh" fixture-validator --role validator --non-interactive >/dev/null 2>&1; then
   echo "expected existing-home protection to fail" >&2
   exit 1
 fi
@@ -121,7 +135,6 @@ fi
 unsafe_home="${FIXTURE}/unsafe/.lumen"
 if LUMEN_HOME="${unsafe_home}" \
   LUMEN_TARGET="${unsafe_home}/lumend" \
-  LUMEN_TARGET_LOG="${FIXTURE}/target.log" \
   HOME="${FIXTURE}/operator" \
   PATH="${FIXTURE}/mock:${PATH}" \
     "${FIXTURE}/repo/scripts/init_node.sh" fixture-unsafe --role validator --non-interactive >/dev/null 2>&1; then
