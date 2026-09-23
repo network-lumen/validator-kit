@@ -162,6 +162,17 @@ SERVICE_SCRIPT="${REPO_ROOT}/scripts/install/lumend_service.sh"
 ADD_PEER_SCRIPT="${REPO_ROOT}/scripts/network/add_peer.sh"
 RELOAD_PEERS_SCRIPT="${REPO_ROOT}/scripts/network/reload_peers.sh"
 
+# The binary installer creates the target's parent directory. Keep that
+# directory outside the node home so installation cannot trip the fresh-home
+# guard before join.sh runs.
+NODE_HOME_ABS="$(realpath -m -- "${NODE_HOME}")"
+LUMEND_BIN_ABS="$(realpath -m -- "${LUMEND_BIN_PATH}")"
+if [[ "${LUMEND_BIN_ABS}" == "${NODE_HOME_ABS}" || "${LUMEND_BIN_ABS}" == "${NODE_HOME_ABS}/"* ]]; then
+  echo "ERROR: lumend binary target '${LUMEND_BIN_PATH}' is inside node home '${NODE_HOME}'." >&2
+  echo "Choose a binary path outside the node home, such as '${DEFAULT_LUMEND_BIN}'." >&2
+  exit 1
+fi
+
 echo "=== Lumen ${ROLE} init ==="
 echo "Role      : ${ROLE}"
 echo "Moniker   : ${MONIKER}"
@@ -213,7 +224,7 @@ fi
 
 echo "[1/5] Ensuring lumend binary is available"
 echo "       (this calls ./scripts/install/download_lumend.sh)"
-"${DOWNLOAD_SCRIPT}"
+LUMEN_TARGET="${LUMEND_BIN_PATH}" "${DOWNLOAD_SCRIPT}"
 
 echo
 echo "[2/5] Joining the network as a node"
