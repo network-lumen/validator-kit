@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+usage() {
+  cat <<'EOF'
+Usage: ./scripts/lumen-node <command> [arguments]
+
+Unified operator interface for the validator-kit workflows. Arguments after a
+command are passed to the existing implementation script.
+
+Commands:
+  deploy <moniker>       Initialize and configure a node with a role.
+  doctor                 Run read-only node diagnostics.
+  state-sync             Validate and configure state sync.
+  snapshot status        Inspect available snapshots.
+  snapshot restore       Restore a snapshot with safety checks.
+  upgrade prepare        Prepare a verified Cosmovisor binary.
+  upgrade status         Inspect service and upgrade readiness.
+  backup export          Export validator backup and latest snapshot.
+  version                Show the validator-kit checkout revision.
+  help [command]         Show general or command-specific help.
+
+Examples:
+  ./scripts/lumen-node deploy node-1 --role validator
+  ./scripts/lumen-node doctor --progress
+  ./scripts/lumen-node upgrade prepare --name upgrade-name --version v1.6.0
+
+Use ./scripts/lumen-node <command> --help for command-specific options.
+EOF
+}
+
+error_unknown() {
+  echo "ERROR: unknown $1 '$2'." >&2
+  echo "Use ./scripts/lumen-node --help for available commands." >&2
+  exit 2
+}
+
+doctor_help() { exec "$SCRIPT_DIR/doctor.sh" --help; }
+deploy_help() { exec "$SCRIPT_DIR/init_node.sh" --help; }
+state_sync_help() { exec "$SCRIPT_DIR/network/state_sync.sh" --help; }
+upgrade_help() { echo "Usage: ./scripts/lumen-node upgrade <prepare|status> [arguments]"; echo "Use 'upgrade prepare --help' or 'upgrade status --help' for details."; }
+snapshot_help() { echo "Usage: ./scripts/lumen-node snapshot <status|restore> [arguments]"; echo "Use 'snapshot restore --help' for restore options."; }
+backup_help() { echo "Usage: ./scripts/lumen-node backup export [HOME_DIR] [SNAP_DIR] [OUT_DIR]"; }
+
+run_snapshot() {
+  local subcommand="${1:-}"
+  case "$subcommand" in
+    --help|help) snapshot_help; exit 0 ;;
+    status) shift; exec "$SCRIPT_DIR/snapshot/snapshots_status.sh" "$@" ;;
+    restore) shift; exec "$SCRIPT_DIR/snapshot/restore_snapshot.sh" "$@" ;;
+    *) error_unknown "snapshot subcommand" "$subcommand" ;;
+  esac
+}
+
+run_upgrade() {
+  local subcommand="${1:-}"
+  case "$subcommand" in
+    --help|help) upgrade_help; exit 0 ;;
+    prepare) shift; exec "$SCRIPT_DIR/upgrade/prepare_upgrade.sh" "$@" ;;
+    status) shift; exec "$SCRIPT_DIR/upgrade/status_upgrade.sh" "$@" ;;
+    *) error_unknown "upgrade subcommand" "$subcommand" ;;
+  esac
+}
+
+run_backup() {
+  local subcommand="${1:-}"
+  case "$subcommand" in
+    --help|help) backup_help; exit 0 ;;
+    export) shift; exec "$SCRIPT_DIR/network/export_backup.sh" "$@" ;;
+    *) error_unknown "backup subcommand" "$subcommand" ;;
+  esac
+}
+
+COMMAND="${1:-}"
+if [[ -z "$COMMAND" ]]; then
+  usage
+  exit 2
+fi
+shift
+
+case "$COMMAND" in
+  -h|--help) usage; exit 0 ;;
+  help)
+    if [[ $# -eq 0 ]]; then
+      usage
+      exit 0
+    fi
+    COMMAND="$1"
+    shift
+    case "$COMMAND" in
+      deploy) deploy_help ;;
+      doctor) doctor_help ;;
+      state-sync) state_sync_help ;;
+      snapshot) run_snapshot --help ;;
+      upgrade) run_upgrade --help ;;
+      backup) run_backup --help ;;
+      version) printf 'lumen-node (validator-kit)\n' ;;
+      *) error_unknown "command" "$COMMAND" ;;
+    esac
+    ;;
+  deploy) exec "$SCRIPT_DIR/init_node.sh" "$@" ;;
+  doctor) exec "$SCRIPT_DIR/doctor.sh" "$@" ;;
+  state-sync) exec "$SCRIPT_DIR/network/state_sync.sh" "$@" ;;
+  snapshot) run_snapshot "$@" ;;
+  upgrade) run_upgrade "$@" ;;
+  backup) run_backup "$@" ;;
+  version)
+    [[ $# -eq 0 ]] || { echo "ERROR: version does not accept arguments." >&2; exit 2; }
+    if command -v git >/dev/null 2>&1 && git -C "$REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+      printf 'lumen-node (validator-kit %s)\n' "$(git -C "$REPO_ROOT" describe --always --dirty 2>/dev/null || git -C "$REPO_ROOT" rev-parse --short HEAD)"
+    else
+      printf 'lumen-node (validator-kit checkout)\n'
+    fi
+    ;;
+  *) error_unknown "command" "$COMMAND" ;;
+esac

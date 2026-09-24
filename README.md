@@ -37,6 +37,7 @@ choices. Validator registration and staking remain separate explicit steps.
 - [Become a validator and stake](docs/guides/become-validator.md)
 - [Key separation and hardening](docs/concepts/validator-key-hardening.md)
 - [Upgrade management](docs/guides/upgrade-management.md)
+- [Operator CLI](docs/guides/operator-cli.md)
 - [Seeds and peer discovery](docs/concepts/seeds.md)
 - [Validator specifications](docs/reference/validator-specs.md)
 - [Staking and voting power](docs/reference/staking.md)

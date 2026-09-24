@@ -15,6 +15,7 @@ Use `./scripts/join.sh <moniker> --role ROLE` or
 
 | Area | Commands |
 | --- | --- |
+| Operator CLI | `./scripts/lumen-node` |
 | Node setup | `./scripts/join.sh`, `./scripts/init_seed.sh` |
 | Chain creation | `./scripts/init_chain.sh` (network maintainers only) |
 | Validator | `./scripts/blockchain/become_validator.sh`, `./scripts/blockchain/stake_tokens.sh` |
@@ -27,3 +28,7 @@ Use the [join guide](../docs/guides/join-and-sync.md) and
 [validator guide](../docs/guides/become-validator.md) for supported workflows.
 Low-level helpers can overwrite node state or change host firewall rules;
 read their usage text before invoking them.
+
+The unified operator entrypoint is `./scripts/lumen-node`. It dispatches the
+documented deployment, diagnostics, state-sync, snapshot, upgrade, and backup
+workflows to the existing implementation scripts.

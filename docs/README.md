@@ -7,6 +7,7 @@
 - [Become a validator and stake](guides/become-validator.md)
 - [Snapshot recovery](guides/snapshot-recovery.md)
 - [Upgrade management](guides/upgrade-management.md)
+- [Operator CLI](guides/operator-cli.md)
 
 ## Concepts
 
