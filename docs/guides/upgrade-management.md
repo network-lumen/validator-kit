@@ -7,9 +7,9 @@ direct      systemd -> lumend
 cosmovisor  systemd -> cosmovisor -> lumend
 ```
 
-Direct mode remains the default. Existing direct services are never silently
-converted. Render a unit for review with `--print-unit`; install Cosmovisor
-mode only with explicit intent:
+Cosmovisor mode is the default for fresh deployment. Existing direct services
+are never silently converted. Render a unit for review with `--print-unit`;
+use direct mode explicitly for compatibility or troubleshooting:
 
 ```bash
 ./scripts/install/lumend_service.sh --print-unit \
@@ -27,9 +27,10 @@ $LUMEN_HOME/cosmovisor/genesis/bin/lumend
 $LUMEN_HOME/cosmovisor/upgrades/<upgrade-name>/bin/lumend
 ```
 
-Validator-kit does not install Cosmovisor. Install and pin the Cosmovisor
-binary separately, verify its source and version, and pass its path explicitly
-or make it available on PATH.
+Fresh deployment installs the pinned Cosmovisor release through the repository
+installer, or accepts a verified `COSMOVISOR_BIN` path. The installer uses the
+upstream Go module at a pinned version and validates `cosmovisor version` before
+installation.
 
 Prepare a binary before the governance upgrade height:
 
@@ -57,6 +58,5 @@ automatically. After a chain migration, using the previous binary is not a
 generic rollback and requires chain-specific recovery. No blockchain state or
 validator signing-state rollback is implemented.
 
-Fresh deployment integration remains deferred: review genesis binary layout,
-service setup, and Doctor behavior before making Cosmovisor the default. This
-belongs to the later deployment review, not this phase.
+Fresh deployment now creates the Cosmovisor genesis layout and installs the
+Cosmovisor service by default. Direct mode remains available explicitly.

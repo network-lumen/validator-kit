@@ -91,12 +91,13 @@ run_init() {
   LUMEN_RELEASE_TAG=v1.4.3 \
   LUMEN_RELEASE_URL="file://${FIXTURE}/linux-amd64-v1.4.3.tar.gz" \
   LUMEN_CHECKSUM_URL="file://${FIXTURE}/SHA256SUMS" \
-  LUMEN_TARGET="${FIXTURE}/repo/bin/lumend" \
+    LUMEN_TARGET="${FIXTURE}/repo/bin/lumend" \
   LUMEN_VERSION_LOG="${FIXTURE}/version-${role}.log" \
   LUMEN_FAKE_FAIL_INIT="${fail_init}" \
   HOME="${FIXTURE}/${role}" \
   PATH="${FIXTURE}/mock:${PATH}" \
-    "${FIXTURE}/repo/scripts/init_node.sh" "fixture-${role}" --role "${role}" --non-interactive
+    "${FIXTURE}/repo/scripts/init_node.sh" "fixture-${role}" --role "${role}" \
+    --service-mode direct --non-interactive
 }
 
 for role in fullnode validator; do

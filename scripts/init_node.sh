@@ -8,7 +8,7 @@ set -euo pipefail
 # for joining an existing network with a selected role. The validator role
 # installs validator-suitable configuration but does not register a validator:
 #
-#   1. Ensure a lumend binary exists.
+#   1. Ensure a verified lumend binary exists.
 #   2. Join the network (creates \$HOME/.lumen with config + keys).
 #   3. Optionally enable state sync against a trusted RPC endpoint.
 #   4. Only then install and start the systemd service.
@@ -25,6 +25,8 @@ Joins an existing Lumen network using one of the supported node roles.
 
 Options:
   --role ROLE     fullnode, rpc, validator, sentry, or seed (default: fullnode).
+  --network NAME  mainnet (testnet/devnet require network assets in the repo).
+  --service-mode  cosmovisor (default) or direct.
   --public-api    Legacy alias for --role rpc.
   --seed          Legacy alias for --role seed.
   --home DIR      Override the node home directory.
@@ -34,7 +36,7 @@ Options:
                   If omitted, state sync is skipped and the node
                   synchronizes using seeds and peer exchange.
   --non-interactive
-                  Never prompt when an existing service requires replacement.
+                  Never prompt for deployment decisions.
 
 You can also set LUMEN_HOME to point at the desired node home; the
 --home flag takes precedence over LUMEN_HOME.
@@ -59,6 +61,8 @@ PUBLIC_API=0
 SEED_MODE=0
 ROLE=""
 NON_INTERACTIVE=0
+NETWORK="mainnet"
+SERVICE_MODE="cosmovisor"
 LUMEN_HOME_OVERRIDE="${LUMEN_HOME:-}"
 
 while [[ $# -gt 0 ]]; do
@@ -91,6 +95,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --rpc)
       RPC_URL="${2:-}"
+      shift 2 || true
+      ;;
+    --network)
+      NETWORK="${2:-}"
+      shift 2 || true
+      ;;
+    --service-mode)
+      SERVICE_MODE="${2:-}"
       shift 2 || true
       ;;
     --public-api)
@@ -147,6 +159,24 @@ if [[ "${PUBLIC_API}" -eq 1 && "$ROLE" != rpc ]]; then
   echo "ERROR: --public-api conflicts with --role $ROLE."
   exit 1
 fi
+case "$SERVICE_MODE" in
+  cosmovisor|direct) ;;
+  *)
+    echo "ERROR: unsupported service mode '$SERVICE_MODE'; use cosmovisor or direct." >&2
+    exit 1
+    ;;
+esac
+case "$NETWORK" in
+  mainnet) ;;
+  testnet|devnet)
+    echo "ERROR: $NETWORK assets are incomplete in this checkout; deployment is currently mainnet-only." >&2
+    exit 1
+    ;;
+  *)
+    echo "ERROR: unsupported network '$NETWORK'." >&2
+    exit 1
+    ;;
+esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -159,18 +189,18 @@ DOWNLOAD_SCRIPT="${REPO_ROOT}/scripts/install/download_lumend.sh"
 JOIN_SCRIPT="${REPO_ROOT}/scripts/network/join.sh"
 STATE_SYNC_SCRIPT="${REPO_ROOT}/scripts/network/state_sync.sh"
 SERVICE_SCRIPT="${REPO_ROOT}/scripts/install/lumend_service.sh"
+COSMOVISOR_INSTALL_SCRIPT="${REPO_ROOT}/scripts/install/install_cosmovisor.sh"
 ADD_PEER_SCRIPT="${REPO_ROOT}/scripts/network/add_peer.sh"
 RELOAD_PEERS_SCRIPT="${REPO_ROOT}/scripts/network/reload_peers.sh"
 
-# The binary installer creates the target's parent directory. Keep that
-# directory outside the node home so installation cannot trip the fresh-home
-# guard before join.sh runs.
 NODE_HOME_ABS="$(realpath -m -- "${NODE_HOME}")"
-LUMEND_BIN_ABS="$(realpath -m -- "${LUMEND_BIN_PATH}")"
-if [[ "${LUMEND_BIN_ABS}" == "${NODE_HOME_ABS}" || "${LUMEND_BIN_ABS}" == "${NODE_HOME_ABS}/"* ]]; then
-  echo "ERROR: lumend binary target '${LUMEND_BIN_PATH}' is inside node home '${NODE_HOME}'." >&2
-  echo "Choose a binary path outside the node home, such as '${DEFAULT_LUMEND_BIN}'." >&2
-  exit 1
+if [[ "$SERVICE_MODE" == direct ]]; then
+  LUMEND_BIN_ABS="$(realpath -m -- "${LUMEND_BIN_PATH}")"
+  if [[ "${LUMEND_BIN_ABS}" == "${NODE_HOME_ABS}" || "${LUMEND_BIN_ABS}" == "${NODE_HOME_ABS}/"* ]]; then
+    echo "ERROR: lumend binary target '${LUMEND_BIN_PATH}' is inside node home '${NODE_HOME}'." >&2
+    echo "Choose a binary path outside the node home, such as '${DEFAULT_LUMEND_BIN}'." >&2
+    exit 1
+  fi
 fi
 
 echo "=== Lumen ${ROLE} init ==="
@@ -178,6 +208,8 @@ echo "Role      : ${ROLE}"
 echo "Moniker   : ${MONIKER}"
 echo "Home      : ${NODE_HOME}"
 echo "RPC (opt) : ${RPC_URL:-<state sync disabled>}"
+echo "Network   : ${NETWORK}"
+echo "Service   : ${SERVICE_MODE}"
 echo
 
 # As with the validator init, we never auto-delete an existing home.
@@ -212,6 +244,11 @@ if [[ ! -x "${SERVICE_SCRIPT}" ]]; then
   exit 1
 fi
 
+if [[ "$SERVICE_MODE" == cosmovisor && ! -x "${COSMOVISOR_INSTALL_SCRIPT}" ]]; then
+  echo "ERROR: Cosmovisor installer not found at ${COSMOVISOR_INSTALL_SCRIPT}" >&2
+  exit 1
+fi
+
 if [[ ! -x "${ADD_PEER_SCRIPT}" ]]; then
   echo "WARNING: add_peer helper not found at ${ADD_PEER_SCRIPT}; skipping RPC persistent peer injection."
   ADD_PEER_SCRIPT=""
@@ -222,21 +259,44 @@ if [[ ! -x "${RELOAD_PEERS_SCRIPT}" ]]; then
   RELOAD_PEERS_SCRIPT=""
 fi
 
-echo "[1/5] Ensuring lumend binary is available"
+DEPLOY_BINARY_TARGET="${LUMEND_BIN_PATH}"
+STAGING_DIR=""
+cleanup_staging() {
+  [[ -n "$STAGING_DIR" && -d "$STAGING_DIR" ]] && rm -rf -- "$STAGING_DIR"
+  return 0
+}
+trap cleanup_staging EXIT
+if [[ "$SERVICE_MODE" == cosmovisor ]]; then
+  # Stage outside the fresh home so the join primitive can create the home
+  # before the verified binary is moved into Cosmovisor's genesis layout.
+  STAGING_DIR="$(mktemp -d)"
+  DEPLOY_BINARY_TARGET="$STAGING_DIR/lumend"
+fi
+
+echo "[1/5] Ensuring verified lumend binary is available"
 echo "       (this calls ./scripts/install/download_lumend.sh)"
-LUMEN_TARGET="${LUMEND_BIN_PATH}" "${DOWNLOAD_SCRIPT}"
+LUMEN_TARGET="${DEPLOY_BINARY_TARGET}" "${DOWNLOAD_SCRIPT}"
 
 echo
 echo "[2/5] Joining the network as a node"
 
-JOIN_ARGS=(--home "${NODE_HOME}" --role "${ROLE}")
+JOIN_ARGS=(--home "${NODE_HOME}" --role "${ROLE}" --network "${NETWORK}")
 echo "       Using ${ROLE} config profile"
 
 # join.sh:
 #   - initializes a .lumen home
 #   - copies config/{fullnode,rpc}/*.toml and genesis.json
 #   - sets seeds/persistent_peers from config/*.txt
-"${JOIN_SCRIPT}" "${MONIKER}" "${JOIN_ARGS[@]}"
+LUMEND_BIN="${DEPLOY_BINARY_TARGET}" "${JOIN_SCRIPT}" "${MONIKER}" "${JOIN_ARGS[@]}"
+
+if [[ "$SERVICE_MODE" == cosmovisor ]]; then
+  GENESIS_BIN="${NODE_HOME}/cosmovisor/genesis/bin/lumend"
+  mkdir -p "${NODE_HOME}/cosmovisor/genesis/bin" "${NODE_HOME}/cosmovisor/upgrades"
+  mv -- "${DEPLOY_BINARY_TARGET}" "${GENESIS_BIN}"
+  chmod 0755 "${GENESIS_BIN}"
+  DEPLOY_BINARY_TARGET="$GENESIS_BIN"
+  echo "Cosmovisor genesis binary: ${GENESIS_BIN}"
+fi
 
 echo
 echo "[2b/5] Reinforcing peers from networks/mainnet/peers.txt (post-join)"
@@ -355,77 +415,41 @@ if ! command -v sudo >/dev/null 2>&1; then
   exit 1
 fi
 
-SERVICE_EXISTS=0
-SERVICE_ACTIVE=0
-if systemctl list-unit-files 2>/dev/null | grep -q '^lumend\.service'; then
-  SERVICE_EXISTS=1
-  if systemctl is-active --quiet lumend 2>/dev/null; then
-    SERVICE_ACTIVE=1
+if [[ "$SERVICE_MODE" == cosmovisor ]]; then
+  COSMOVISOR_BIN_PATH="${COSMOVISOR_BIN:-}"
+  if [[ -z "$COSMOVISOR_BIN_PATH" ]]; then
+    echo "→ Installing pinned Cosmovisor through the repository installer"
+    sudo "${COSMOVISOR_INSTALL_SCRIPT}"
+    COSMOVISOR_BIN_PATH="/usr/local/bin/cosmovisor"
   fi
-fi
-
-if [[ "${SERVICE_EXISTS}" -eq 0 ]]; then
-  echo
-  echo "→ Calling: sudo LUMEND_BIN=\"${LUMEND_BIN_PATH}\" ${SERVICE_SCRIPT} \"${NODE_HOME}\" \"${USER}\""
-  sudo LUMEND_BIN="${LUMEND_BIN_PATH}" "${SERVICE_SCRIPT}" "${NODE_HOME}" "${USER}"
+  if [[ ! -x "$COSMOVISOR_BIN_PATH" ]]; then
+    echo "ERROR: Cosmovisor binary is not executable at ${COSMOVISOR_BIN_PATH}." >&2
+    exit 1
+  fi
+  COSMOVISOR_VERSION_OUTPUT="$("${COSMOVISOR_BIN_PATH}" version 2>&1 || true)"
+  if [[ -z "$COSMOVISOR_VERSION_OUTPUT" ]]; then
+    echo "ERROR: Cosmovisor version could not be verified at ${COSMOVISOR_BIN_PATH}." >&2
+    exit 1
+  fi
+  echo "Cosmovisor: ${COSMOVISOR_BIN_PATH} (${COSMOVISOR_VERSION_OUTPUT//$'\n'/ })"
+  echo "→ Installing Cosmovisor lumend.service"
+  SERVICE_ARGS=(--mode cosmovisor --cosmovisor-bin "${COSMOVISOR_BIN_PATH}")
+  [[ "$NON_INTERACTIVE" -eq 1 ]] && SERVICE_ARGS+=(--non-interactive)
+  SERVICE_ARGS+=("${NODE_HOME}" "${USER}")
+  sudo "${SERVICE_SCRIPT}" "${SERVICE_ARGS[@]}"
 else
-  if [[ "${SERVICE_ACTIVE}" -eq 1 ]]; then
-    echo
-    echo "A lumend systemd service is currently RUNNING."
-    echo "Overwriting it will stop and restart the node."
-    if [[ "${NON_INTERACTIVE}" -eq 1 ]]; then
-      echo "ERROR: lumend.service is already running; refusing replacement in non-interactive mode." >&2
-      exit 1
-    fi
-    read -r -p "Do you want to stop the service and continue? [y/N] " ANSWER
-    ANSWER="${ANSWER:-N}"
-    if ! [[ "${ANSWER}" =~ ^[Yy]$ ]]; then
-      echo "Aborting without touching existing lumend.service."
-      exit 0
-    fi
-
-    echo "Stopping lumend.service ..."
-    if ! sudo systemctl stop lumend; then
-      echo "ERROR: failed to stop lumend.service; aborting."
-      exit 1
-    fi
-
-    echo "→ Calling: sudo LUMEND_BIN=\"${LUMEND_BIN_PATH}\" ${SERVICE_SCRIPT} --force \"${NODE_HOME}\" \"${USER}\""
-    if ! sudo LUMEND_BIN="${LUMEND_BIN_PATH}" "${SERVICE_SCRIPT}" --force "${NODE_HOME}" "${USER}"; then
-      echo "ERROR: lumend_service.sh failed; existing service may need manual attention."
-      exit 1
-    fi
-
-    echo "Starting lumend.service ..."
-    if ! sudo systemctl start lumend; then
-      echo "ERROR: failed to start lumend.service; check 'systemctl status lumend'."
-      exit 1
-    fi
-  else
-    echo
-    echo "A lumend systemd service already exists but is stopped."
-    if [[ "${NON_INTERACTIVE}" -eq 1 ]]; then
-      echo "ERROR: lumend.service already exists; refusing replacement in non-interactive mode." >&2
-      exit 1
-    fi
-    read -r -p "Do you want to overwrite it with the new configuration? [y/N] " ANSWER
-    ANSWER="${ANSWER:-N}"
-    if ! [[ "${ANSWER}" =~ ^[Yy]$ ]]; then
-      echo "Aborting without touching existing lumend.service."
-      exit 0
-    fi
-
-    echo "→ Calling: sudo LUMEND_BIN=\"${LUMEND_BIN_PATH}\" ${SERVICE_SCRIPT} --force \"${NODE_HOME}\" \"${USER}\""
-    if ! sudo LUMEND_BIN="${LUMEND_BIN_PATH}" "${SERVICE_SCRIPT}" --force "${NODE_HOME}" "${USER}"; then
-      echo "ERROR: lumend_service.sh failed; existing service may need manual attention."
-      exit 1
-    fi
-  fi
+  echo "→ Installing direct lumend.service"
+  SERVICE_ARGS=(--mode direct)
+  [[ "$NON_INTERACTIVE" -eq 1 ]] && SERVICE_ARGS+=(--non-interactive)
+  SERVICE_ARGS+=("${NODE_HOME}" "${USER}")
+  sudo LUMEND_BIN="${DEPLOY_BINARY_TARGET}" "${SERVICE_SCRIPT}" "${SERVICE_ARGS[@]}"
 fi
 
 echo
 echo "=== Node init complete ==="
 echo "Home directory : ${NODE_HOME}"
+echo "Network        : ${NETWORK}"
+echo "Service mode   : ${SERVICE_MODE}"
 echo "Local backup   : <none created by init_node.sh>"
 echo
 echo "You can inspect the service with:"

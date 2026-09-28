@@ -21,7 +21,7 @@ mainnet-only.
 From the repository root on a Linux host:
 
 ```bash
-./scripts/join.sh <moniker> --role fullnode [--rpc http://trusted-rpc:26657]
+./scripts/lumen-node deploy <moniker> --role fullnode [--rpc http://trusted-rpc:26657]
 ```
 
 Available roles are `fullnode`, `rpc`, `validator`, `sentry`, and `seed`; the

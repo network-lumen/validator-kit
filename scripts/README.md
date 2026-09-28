@@ -9,14 +9,14 @@ binary, node home, service, local RPC, chain ID, sync state, peers, listeners,
 disk space, and sensitive-file warnings without starting, stopping, or repairing
 the node.
 
-Use `./scripts/join.sh <moniker> --role ROLE` or
-`./scripts/init_node.sh <moniker> --role ROLE` for `fullnode`, `rpc`,
-`validator`, `sentry`, or `seed`. The default is `fullnode`.
+Use `./scripts/lumen-node deploy <moniker> --role ROLE` for `fullnode`, `rpc`,
+`validator`, `sentry`, or `seed`. The default is `fullnode`; `join.sh` and
+`init_node.sh` remain advanced compatibility interfaces.
 
 | Area | Commands |
 | --- | --- |
 | Operator CLI | `./scripts/lumen-node` |
-| Node setup | `./scripts/join.sh`, `./scripts/init_seed.sh` |
+| Node setup | `./scripts/lumen-node deploy`, `./scripts/join.sh` (compatibility) |
 | Chain creation | `./scripts/init_chain.sh` (network maintainers only) |
 | Validator | `./scripts/blockchain/become_validator.sh`, `./scripts/blockchain/stake_tokens.sh` |
 | Peers and security | `./scripts/network/` |

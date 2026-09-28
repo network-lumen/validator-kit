@@ -1,6 +1,6 @@
 # Operator CLI
 
-`./scripts/lumen-node` is a thin dispatcher for supported operator workflows.
+`./scripts/lumen-node` is the canonical interface for supported operator workflows.
 It locates implementation scripts relative to the repository checkout and
 forwards command arguments without changing their interactive behavior or
 exit codes.
@@ -22,6 +22,7 @@ Examples:
 
 ```bash
 ./scripts/lumen-node deploy node-1 --role validator
+./scripts/lumen-node deploy node-1 --role validator --service-mode cosmovisor
 ./scripts/lumen-node doctor --progress
 ./scripts/lumen-node state-sync --home "$HOME/.lumen" --rpc https://rpc.example:26657
 ./scripts/lumen-node snapshot status "$HOME/snapshots"

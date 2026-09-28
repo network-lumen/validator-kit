@@ -3,11 +3,11 @@
 Choose a role when joining an existing network:
 
 ```bash
-./scripts/join.sh <moniker> --role fullnode
-./scripts/join.sh <moniker> --role rpc
-./scripts/join.sh <moniker> --role validator
-./scripts/join.sh <moniker> --role sentry
-./scripts/join.sh <moniker> --role seed
+./scripts/lumen-node deploy <moniker> --role fullnode
+./scripts/lumen-node deploy <moniker> --role rpc
+./scripts/lumen-node deploy <moniker> --role validator
+./scripts/lumen-node deploy <moniker> --role sentry
+./scripts/lumen-node deploy <moniker> --role seed
 ```
 
 The default role is `fullnode`. `--public-api` remains an alias for `--role

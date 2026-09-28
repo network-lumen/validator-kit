@@ -39,11 +39,91 @@ error_unknown() {
 }
 
 doctor_help() { exec "$SCRIPT_DIR/doctor.sh" --help; }
-deploy_help() { exec "$SCRIPT_DIR/init_node.sh" --help; }
+deploy_usage() {
+  cat <<'EOF'
+Usage: ./scripts/lumen-node deploy <moniker> [options]
+
+Deploy a fresh Lumen node using the selected role and service mode.
+
+Options:
+  --role ROLE          fullnode, rpc, validator, sentry, or seed (default: fullnode).
+  --network NETWORK    mainnet (default). testnet/devnet require repository network assets.
+  --service-mode MODE  cosmovisor (default) or direct.
+  --home DIR           Node home directory.
+  --rpc URL            Trusted RPC endpoint for validated state sync.
+  --non-interactive    Fail instead of prompting for required confirmation.
+  -h, --help           Show this help.
+
+Examples:
+  ./scripts/lumen-node deploy node-01
+  ./scripts/lumen-node deploy validator-01 --role validator
+  ./scripts/lumen-node deploy seed-01 --role seed
+EOF
+}
 state_sync_help() { exec "$SCRIPT_DIR/network/state_sync.sh" --help; }
 upgrade_help() { echo "Usage: ./scripts/lumen-node upgrade <prepare|status> [arguments]"; echo "Use 'upgrade prepare --help' or 'upgrade status --help' for details."; }
 snapshot_help() { echo "Usage: ./scripts/lumen-node snapshot <status|restore> [arguments]"; echo "Use 'snapshot restore --help' for restore options."; }
 backup_help() { echo "Usage: ./scripts/lumen-node backup export [HOME_DIR] [SNAP_DIR] [OUT_DIR]"; }
+
+run_deploy() {
+  if [[ "${1:-}" == -h || "${1:-}" == --help ]]; then
+    deploy_usage
+    exit 0
+  fi
+  if [[ $# -eq 0 || "${1:-}" == -* ]]; then
+    echo "ERROR: lumen-node deploy requires a positional <moniker>." >&2
+    deploy_usage >&2
+    exit 2
+  fi
+
+  local moniker="$1" role="fullnode" service_mode="cosmovisor" network="mainnet" option value
+  shift
+  local forward_args=("$@")
+  while [[ $# -gt 0 ]]; do
+    option="$1"
+    case "$option" in
+      -h|--help)
+        deploy_usage
+        exit 0
+        ;;
+      --role|--service-mode|--network|--home|--rpc)
+        [[ $# -ge 2 ]] || {
+          echo "ERROR: lumen-node deploy $option requires a value." >&2
+          exit 2
+        }
+        value="$2"
+        case "$option" in
+          --role) role="$value" ;;
+          --service-mode) service_mode="$value" ;;
+          --network) network="$value" ;;
+        esac
+        shift 2
+        ;;
+      --public-api) role="rpc"; shift ;;
+      --seed) role="seed"; shift ;;
+      *) shift ;;
+    esac
+  done
+
+  case "$role" in
+    fullnode|rpc|validator|sentry|seed) ;;
+    *) echo "ERROR: lumen-node deploy: unsupported role '$role'." >&2; exit 2 ;;
+  esac
+  case "$service_mode" in
+    cosmovisor|direct) ;;
+    *) echo "ERROR: lumen-node deploy: unsupported service mode '$service_mode'." >&2; exit 2 ;;
+  esac
+  case "$network" in
+    mainnet) ;;
+    testnet|devnet)
+      echo "ERROR: lumen-node deploy: $network assets are incomplete in this checkout." >&2
+      exit 2
+      ;;
+    *) echo "ERROR: lumen-node deploy: unsupported network '$network'." >&2; exit 2 ;;
+  esac
+
+  exec "$SCRIPT_DIR/init_node.sh" "$moniker" "${forward_args[@]}"
+}
 
 run_snapshot() {
   local subcommand="${1:-}"
@@ -91,7 +171,7 @@ case "$COMMAND" in
     COMMAND="$1"
     shift
     case "$COMMAND" in
-      deploy) deploy_help ;;
+      deploy) deploy_usage ;;
       doctor) doctor_help ;;
       state-sync) state_sync_help ;;
       snapshot) run_snapshot --help ;;
@@ -101,7 +181,7 @@ case "$COMMAND" in
       *) error_unknown "command" "$COMMAND" ;;
     esac
     ;;
-  deploy) exec "$SCRIPT_DIR/init_node.sh" "$@" ;;
+  deploy) run_deploy "$@" ;;
   doctor) exec "$SCRIPT_DIR/doctor.sh" "$@" ;;
   state-sync) exec "$SCRIPT_DIR/network/state_sync.sh" "$@" ;;
   snapshot) run_snapshot "$@" ;;

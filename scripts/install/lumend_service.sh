@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Create and start a systemd service for an existing lumend home.
-# Usage: sudo ./scripts/install/lumend_service.sh [--force] [--mode direct|cosmovisor] [HOME_DIR] [USER]
+# Usage: sudo ./scripts/install/lumend_service.sh [--force] [--non-interactive] [--mode direct|cosmovisor] [HOME_DIR] [USER]
 #
 # - If you omit HOME_DIR / USER, they default to the user that ran sudo
 #   (or root if there is no sudo context).
@@ -8,12 +8,14 @@
 set -euo pipefail
 
 FORCE=0
+NON_INTERACTIVE=0
 PRINT_UNIT=0
 SERVICE_MODE="direct"
 COSMOVISOR_BIN_PATH=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --force) FORCE=1; shift ;;
+    --non-interactive) NON_INTERACTIVE=1; shift ;;
     --print-unit) PRINT_UNIT=1; shift ;;
     --mode)
       [[ $# -ge 2 ]] || { echo "ERROR: --mode requires direct or cosmovisor." >&2; exit 2; }
@@ -26,7 +28,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --help)
-      echo "Usage: sudo ./scripts/install/lumend_service.sh [--force] [--mode direct|cosmovisor] [HOME_DIR] [USER]"
+      echo "Usage: sudo ./scripts/install/lumend_service.sh [--force] [--non-interactive] [--mode direct|cosmovisor] [HOME_DIR] [USER]"
       echo "       ./scripts/install/lumend_service.sh --print-unit [--mode direct|cosmovisor] [HOME_DIR] [USER]"
       exit 0
       ;;
@@ -129,6 +131,10 @@ if [[ "$PRINT_UNIT" -eq 0 ]] && systemctl list-unit-files | grep -q "^lumend.ser
 
   CURRENT_STATE="$(systemctl is-active lumend 2>/dev/null || true)"
   if [[ "${CURRENT_STATE}" == "active" || "${CURRENT_STATE}" == "activating" ]]; then
+    if [[ "$NON_INTERACTIVE" -eq 1 ]]; then
+      echo "ERROR: refusing to replace a running lumend.service in non-interactive mode." >&2
+      exit 1
+    fi
     echo "Existing lumend.service is running (state: ${CURRENT_STATE})."
     echo "Stopping lumend.service gracefully before updating unit..."
     if ! systemctl stop lumend; then

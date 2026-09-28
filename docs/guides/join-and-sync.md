@@ -8,7 +8,7 @@ service and creates a **non-validator** node.
 ## Standard join
 
 ```bash
-./scripts/join.sh <moniker>
+./scripts/lumen-node deploy <moniker>
 ```
 
 Without an RPC endpoint, the node synchronizes using seeds, peer exchange, and
@@ -27,7 +27,7 @@ If you have a trusted RPC endpoint and the network serves state snapshots,
 configure state sync during the initial join:
 
 ```bash
-./scripts/join.sh <moniker> --rpc http://trusted-rpc:26657
+./scripts/lumen-node deploy <moniker> --rpc http://trusted-rpc:26657
 ```
 
 The helper validates `/status` before using the endpoint: it must report the
