@@ -10,8 +10,9 @@ usage() {
   cat <<EOF
 Usage: sudo ./scripts/install/install_cosmovisor.sh [--target PATH]
 
-Install the pinned Cosmovisor release ${COSMOVISOR_VERSION} with Go, verify its
-reported version, and place it at PATH (default: ${TARGET}).
+Reuse an existing Cosmovisor when available. Otherwise install the pinned
+release ${COSMOVISOR_VERSION} with Go, verify it, and place it at PATH
+(default: ${TARGET}).
 EOF
 }
 
@@ -26,6 +27,26 @@ while [[ $# -gt 0 ]]; do
     *) echo "ERROR: unknown option '$1'." >&2; usage >&2; exit 2 ;;
   esac
 done
+
+EXISTING_PATH="$(command -v cosmovisor 2>/dev/null || true)"
+if [[ -n "$EXISTING_PATH" ]]; then
+  EXISTING_PATH="$(realpath -- "$EXISTING_PATH")"
+  [[ -x "$EXISTING_PATH" ]] || {
+    echo "ERROR: resolved Cosmovisor is not executable: $EXISTING_PATH" >&2
+    exit 1
+  }
+  EXISTING_VERSION="$($EXISTING_PATH version 2>&1 || true)"
+  [[ -n "$EXISTING_VERSION" ]] || {
+    echo "ERROR: existing Cosmovisor could not execute: $EXISTING_PATH" >&2
+    exit 1
+  }
+  echo "→ Found existing Cosmovisor"
+  echo "→ Cosmovisor: $EXISTING_PATH"
+  echo "→ Version: ${EXISTING_VERSION//$'\n'/ }"
+  echo "→ Reusing existing installation"
+  printf 'COSMOVISOR_PATH=%s\n' "$EXISTING_PATH"
+  exit 0
+fi
 
 if [[ "$EUID" -ne 0 ]]; then
   echo "ERROR: Cosmovisor installation requires root privileges for the target path." >&2
@@ -75,3 +96,4 @@ fi
 
 install -m 0755 "$CANDIDATE" "$TARGET"
 echo "Cosmovisor installed: $TARGET (${VERSION_OUTPUT//$'\n'/ })"
+printf 'COSMOVISOR_PATH=%s\n' "$TARGET"

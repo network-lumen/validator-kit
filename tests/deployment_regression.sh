@@ -114,6 +114,59 @@ for role in fullnode rpc validator sentry seed; do
 done
 [[ "$(grep -c '^cosmovisor|' "$FIXTURE/services.log")" -eq 5 ]]
 
+existing_cosmovisor="$FIXTURE/existing-cosmovisor"
+rm -f "$FIXTURE/cosmovisor"
+cat > "$existing_cosmovisor" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == version ]]; then printf '%s\n' 'cosmovisor v9.8.7'; fi
+EOF
+chmod 0755 "$existing_cosmovisor"
+ln -s "$existing_cosmovisor" "$FIXTURE/cosmovisor"
+existing_before="$(sha256sum "$existing_cosmovisor")"
+existing_home="$FIXTURE/reused/.lumen"
+no_go_path="$FIXTURE/mock:$FIXTURE:/usr/bin:/bin"
+no_go_no_cosmo_path="$FIXTURE/mock:/usr/bin:/bin"
+SERVICE_LOG="$FIXTURE/services.log" UNIT_OUTPUT="$FIXTURE/reused.unit" \
+  LUMEN_HOME="$existing_home" LUMEN_RELEASE_TAG=v1.4.3 \
+  LUMEN_RELEASE_URL="file://$FIXTURE/linux-amd64-v1.4.3.tar.gz" \
+  LUMEN_CHECKSUM_URL="file://$FIXTURE/SHA256SUMS" \
+  HOME="$FIXTURE/reused" PATH="$no_go_path" \
+  "$FIXTURE/repo/scripts/lumen-node" deploy reused-node --non-interactive >/dev/null
+grep -q "ExecStart=$existing_cosmovisor run start --home $existing_home" "$FIXTURE/reused.unit"
+[[ "$(sha256sum "$existing_cosmovisor")" == "$existing_before" ]]
+
+if PATH="$no_go_path" command -v go >/dev/null 2>&1; then
+  echo "test fixture unexpectedly exposed Go" >&2
+  exit 1
+fi
+
+cat > "$FIXTURE/repo/scripts/install/install_cosmovisor.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+command -v go >/dev/null 2>&1 || { echo "Go was not visible through forwarded PATH" >&2; exit 1; }
+cat > "$FIXTURE_COSMOVISOR" <<'COSMOVISOR'
+#!/usr/bin/env bash
+if [[ "${1:-}" == version ]]; then printf '%s\n' 'cosmovisor v1.7.3'; fi
+COSMOVISOR
+chmod 0755 "$FIXTURE_COSMOVISOR"
+printf 'installed fixture Cosmovisor\nCOSMOVISOR_PATH=%s\n' "$FIXTURE_COSMOVISOR"
+EOF
+chmod 0755 "$FIXTURE/repo/scripts/install/install_cosmovisor.sh"
+cat > "$FIXTURE/mock/go" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' 'go version go1.26.4 linux/amd64'
+EOF
+chmod 0755 "$FIXTURE/mock/go"
+install_home="$FIXTURE/installed/.lumen"
+SERVICE_LOG="$FIXTURE/services.log" UNIT_OUTPUT="$FIXTURE/installed.unit" \
+  FIXTURE_COSMOVISOR="$FIXTURE/mock/cosmovisor" LUMEN_HOME="$install_home" \
+  LUMEN_RELEASE_TAG=v1.4.3 LUMEN_RELEASE_URL="file://$FIXTURE/linux-amd64-v1.4.3.tar.gz" \
+  LUMEN_CHECKSUM_URL="file://$FIXTURE/SHA256SUMS" HOME="$FIXTURE/installed" \
+  PATH="$FIXTURE/mock:$PATH" "$FIXTURE/repo/scripts/lumen-node" deploy installed-node \
+  --non-interactive >/dev/null
+grep -q "ExecStart=$FIXTURE/mock/cosmovisor run start --home $install_home" "$FIXTURE/installed.unit"
+rm -f "$FIXTURE/mock/cosmovisor"
+
 direct_home="$FIXTURE/direct/.lumen"
 direct_unit="$FIXTURE/direct.unit"
 SERVICE_LOG="$FIXTURE/services.log" UNIT_OUTPUT="$direct_unit" \
@@ -150,7 +203,7 @@ if SERVICE_LOG="$FIXTURE/failing-services.log" UNIT_OUTPUT="$FIXTURE/failing.uni
   LUMEN_HOME="$FIXTURE/cosmo-failure/.lumen" HOME="$FIXTURE/cosmo-failure" \
   LUMEN_RELEASE_TAG=v1.4.3 \
   LUMEN_RELEASE_URL="file://$FIXTURE/linux-amd64-v1.4.3.tar.gz" \
-  LUMEN_CHECKSUM_URL="file://$FIXTURE/SHA256SUMS" PATH="$FIXTURE/mock:$PATH" \
+  LUMEN_CHECKSUM_URL="file://$FIXTURE/SHA256SUMS" PATH="$no_go_no_cosmo_path" \
   "$FIXTURE/repo/scripts/lumen-node" deploy failed-cosmo --non-interactive >/dev/null 2>&1; then
   echo "Cosmovisor installation failure was swallowed" >&2
   exit 1

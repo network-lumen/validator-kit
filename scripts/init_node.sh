@@ -418,9 +418,32 @@ fi
 if [[ "$SERVICE_MODE" == cosmovisor ]]; then
   COSMOVISOR_BIN_PATH="${COSMOVISOR_BIN:-}"
   if [[ -z "$COSMOVISOR_BIN_PATH" ]]; then
+    COSMOVISOR_BIN_PATH="$(command -v cosmovisor 2>/dev/null || true)"
+  fi
+  if [[ -n "$COSMOVISOR_BIN_PATH" ]]; then
+    COSMOVISOR_BIN_PATH="$(realpath -- "$COSMOVISOR_BIN_PATH")"
+    if [[ ! -x "$COSMOVISOR_BIN_PATH" ]]; then
+      echo "ERROR: Cosmovisor binary is not executable at ${COSMOVISOR_BIN_PATH}." >&2
+      exit 1
+    fi
+    COSMOVISOR_VERSION_OUTPUT="$(${COSMOVISOR_BIN_PATH} version 2>&1 || true)"
+    if [[ -z "$COSMOVISOR_VERSION_OUTPUT" ]]; then
+      echo "ERROR: Cosmovisor version could not be verified at ${COSMOVISOR_BIN_PATH}." >&2
+      exit 1
+    fi
+    echo "→ Found existing Cosmovisor"
+    echo "→ Cosmovisor: ${COSMOVISOR_BIN_PATH}"
+    echo "→ Version: ${COSMOVISOR_VERSION_OUTPUT//$'\n'/ }"
+    echo "→ Reusing existing installation"
+  else
     echo "→ Installing pinned Cosmovisor through the repository installer"
-    sudo "${COSMOVISOR_INSTALL_SCRIPT}"
-    COSMOVISOR_BIN_PATH="/usr/local/bin/cosmovisor"
+    if ! INSTALL_OUTPUT="$(sudo env "PATH=${PATH:-}" "${COSMOVISOR_INSTALL_SCRIPT}")"; then
+      echo "ERROR: Cosmovisor installation failed; refusing to continue without Cosmovisor." >&2
+      exit 1
+    fi
+    printf '%s\n' "$INSTALL_OUTPUT"
+    COSMOVISOR_BIN_PATH="$(awk -F= '$1 == "COSMOVISOR_PATH" { path = substr($0, index($0, "=") + 1) } END { print path }' <<< "$INSTALL_OUTPUT")"
+    COSMOVISOR_BIN_PATH="${COSMOVISOR_BIN_PATH:-/usr/local/bin/cosmovisor}"
   fi
   if [[ ! -x "$COSMOVISOR_BIN_PATH" ]]; then
     echo "ERROR: Cosmovisor binary is not executable at ${COSMOVISOR_BIN_PATH}." >&2
