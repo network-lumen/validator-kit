@@ -41,7 +41,7 @@ This is meant for hardened validator hosts where:
 EOF
 }
 
-HOME_DIR="${HOME}/.lumen"
+HOME_DIR="${LUMEN_HOME:-${HOME:-/root}/.lumen}"
 INCLUDE_BACKUPS=0
 WIPE_HISTORY=0
 ASSUME_YES=0
@@ -142,4 +142,3 @@ fi
 echo "✔ Scrub completed. Consensus keys (priv_validator_key.json) and node_id"
 echo "  have NOT been touched, so this node can still participate in the network,"
 echo "  but it no longer holds local account/PQC keys to create TXs."
-

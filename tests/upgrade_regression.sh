@@ -39,6 +39,8 @@ fi
 cosmo_unit="$("$REPO_ROOT/scripts/install/lumend_service.sh" --print-unit \
   --mode cosmovisor --cosmovisor-bin "$FIXTURE/cosmovisor" "$FIXTURE/home" nodeuser)"
 grep -q "Environment=DAEMON_NAME=lumend" <<< "$cosmo_unit"
+grep -q "User=nodeuser" <<< "$cosmo_unit"
+grep -q "Environment=HOME=" <<< "$cosmo_unit"
 grep -q "Environment=DAEMON_HOME=$FIXTURE/home" <<< "$cosmo_unit"
 grep -q "Environment=DAEMON_ALLOW_DOWNLOAD_BINARIES=false" <<< "$cosmo_unit"
 grep -q "ExecStart=$FIXTURE/cosmovisor run start --home $FIXTURE/home" <<< "$cosmo_unit"

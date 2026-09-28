@@ -25,7 +25,7 @@ Options:
 EOF
 }
 
-HOME_DIR="$HOME/.lumen"
+HOME_DIR="${LUMEN_HOME:-${HOME:-/root}/.lumen}"
 SERVICE_NAME="lumend"
 RESTART=1
 

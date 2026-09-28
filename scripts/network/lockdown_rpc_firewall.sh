@@ -201,10 +201,13 @@ if [[ "$ASSUME_YES" -ne 1 ]]; then
 fi
 
 BACKUP_DATE="$(date +%Y%m%d_%H%M%S)"
+BACKUP_DIR="${FIREWALL_BACKUP_DIR:-/var/backups/lumen-firewall}"
+mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
 
 echo "Backing up existing rules..."
-iptables-save  >"/root/iptables-backup-rpc-${BACKUP_DATE}.v4"  || true
-ip6tables-save >"/root/ip6tables-backup-rpc-${BACKUP_DATE}.v6" || true
+iptables-save  >"$BACKUP_DIR/iptables-backup-rpc-${BACKUP_DATE}.v4"  || true
+ip6tables-save >"$BACKUP_DIR/ip6tables-backup-rpc-${BACKUP_DATE}.v6" || true
 
 echo "Applying IPv4 rules..."
 
@@ -277,8 +280,8 @@ fi
 
 echo "✔ RPC/API node firewall rules applied."
 echo "Backups:"
-echo "  /root/iptables-backup-rpc-${BACKUP_DATE}.v4"
-echo "  /root/ip6tables-backup-rpc-${BACKUP_DATE}.v6"
+echo "  $BACKUP_DIR/iptables-backup-rpc-${BACKUP_DATE}.v4"
+echo "  $BACKUP_DIR/ip6tables-backup-rpc-${BACKUP_DATE}.v6"
 echo
 echo "Note: RPC/API and P2P ports are now reachable from the Internet; SSH and metrics"
 echo "      are only reachable over Tailscale. To persist these rules across reboots,"

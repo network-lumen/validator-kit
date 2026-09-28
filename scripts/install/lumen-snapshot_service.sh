@@ -14,16 +14,32 @@ if [[ "$EUID" -ne 0 ]]; then
   exit 1
 fi
 
-# Try to guess the operator's home (user who launched sudo), then fall back
-# to the current HOME. This keeps defaults aligned with whoever owns the node.
+# Resolve the operator account without assuming a particular username. The
+# node-home owner takes precedence when an explicit existing home is supplied.
 if [[ -n "${SUDO_USER:-}" && "${SUDO_USER:-}" != "root" ]]; then
   DEFAULT_USER_HOME="$(eval echo "~${SUDO_USER}")"
+  DEFAULT_USER="${SUDO_USER}"
 else
   DEFAULT_USER_HOME="${HOME:-/root}"
+  DEFAULT_USER="${USER:-root}"
 fi
 
 read -r -p "Node HOME directory? (${DEFAULT_USER_HOME}/.lumen): " HOME_DIR
 HOME_DIR=${HOME_DIR:-${DEFAULT_USER_HOME}/.lumen}
+
+if [[ -d "$HOME_DIR" ]]; then
+  NODE_OWNER="$(stat -c '%U' "$HOME_DIR" 2>/dev/null || true)"
+  if [[ -n "$NODE_OWNER" && "$NODE_OWNER" != UNKNOWN && "$NODE_OWNER" != root ]] && id "$NODE_OWNER" >/dev/null 2>&1; then
+    DEFAULT_USER="$NODE_OWNER"
+  fi
+fi
+SERVICE_USER="${SNAP_SERVICE_USER:-${DEFAULT_USER}}"
+id "$SERVICE_USER" >/dev/null 2>&1 || {
+  echo "ERROR: snapshot service user does not exist: $SERVICE_USER" >&2
+  exit 1
+}
+SERVICE_HOME="$(getent passwd "$SERVICE_USER" | cut -d: -f6)"
+SERVICE_HOME="${SERVICE_HOME:-${DEFAULT_USER_HOME}}"
 
 read -r -p "Block interval between snapshots? (50): " INTERVAL
 INTERVAL=${INTERVAL:-50}
@@ -31,8 +47,9 @@ INTERVAL=${INTERVAL:-50}
 read -r -p "Snapshots to keep? (10): " RETENTION
 RETENTION=${RETENTION:-10}
 
-read -r -p "Snapshot directory? (${DEFAULT_USER_HOME}/snapshots): " SNAP_DIR
-SNAP_DIR=${SNAP_DIR:-${DEFAULT_USER_HOME}/snapshots}
+DEFAULT_SNAPSHOT_DIR="$(dirname -- "$HOME_DIR")/snapshots"
+read -r -p "Snapshot directory? (${DEFAULT_SNAPSHOT_DIR}): " SNAP_DIR
+SNAP_DIR=${SNAP_DIR:-${DEFAULT_SNAPSHOT_DIR}}
 
 echo ""
 read -r -p "Install systemd service? (Y/n): " INSTALL_SYSTEMD
@@ -202,6 +219,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+User=$SERVICE_USER
+Environment=HOME=$SERVICE_HOME
 ExecStart=$SNAP_SCRIPT
 Restart=always
 

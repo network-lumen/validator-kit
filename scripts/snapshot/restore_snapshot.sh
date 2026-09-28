@@ -21,20 +21,20 @@ interactive selection of the newest local block_*.tar.gz archive.
 EOF
 }
 
-HOME_DIR="$HOME/.lumen"
-SNAP_DIR="$HOME/snapshots"
+HOME_DIR="${LUMEN_HOME:-${HOME:-/root}/.lumen}"
+SNAP_DIR="${LUMEN_SNAPSHOT_DIR:-$(dirname -- "$HOME_DIR")/snapshots}"
 SERVICE_NAME="lumend"
-[[ -v LUMEN_HOME ]] && HOME_DIR="$LUMEN_HOME"
-[[ -v LUMEN_SNAPSHOT_DIR ]] && SNAP_DIR="$LUMEN_SNAPSHOT_DIR"
+SNAP_DIR_EXPLICIT=0
+[[ -n "${LUMEN_SNAPSHOT_DIR:-}" ]] && SNAP_DIR_EXPLICIT=1
 SNAPSHOT_INPUT=""
 NON_INTERACTIVE=0
 POSITIONAL=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --home) [[ $# -ge 2 ]] || { echo "ERROR: --home requires a value." >&2; exit 2; }; HOME_DIR="$2"; shift 2 ;;
+    --home) [[ $# -ge 2 ]] || { echo "ERROR: --home requires a value." >&2; exit 2; }; HOME_DIR="$2"; (( SNAP_DIR_EXPLICIT == 0 )) && SNAP_DIR="$(dirname -- "$HOME_DIR")/snapshots"; shift 2 ;;
     --snapshot) [[ $# -ge 2 ]] || { echo "ERROR: --snapshot requires a value." >&2; exit 2; }; SNAPSHOT_INPUT="$2"; shift 2 ;;
-    --snapshot-dir) [[ $# -ge 2 ]] || { echo "ERROR: --snapshot-dir requires a value." >&2; exit 2; }; SNAP_DIR="$2"; shift 2 ;;
+    --snapshot-dir) [[ $# -ge 2 ]] || { echo "ERROR: --snapshot-dir requires a value." >&2; exit 2; }; SNAP_DIR="$2"; SNAP_DIR_EXPLICIT=1; shift 2 ;;
     --service) [[ $# -ge 2 ]] || { echo "ERROR: --service requires a value." >&2; exit 2; }; SERVICE_NAME="$2"; shift 2 ;;
     --non-interactive) NON_INTERACTIVE=1; shift ;;
     -h|--help) usage; exit 0 ;;

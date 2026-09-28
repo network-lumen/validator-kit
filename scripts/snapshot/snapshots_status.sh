@@ -1,8 +1,45 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SNAP_DIR="${1:-/root/snapshots}"
-MODE="${2:---verify}"
+DEFAULT_HOME="${LUMEN_HOME:-${HOME:-/root}/.lumen}"
+SNAP_DIR="${LUMEN_SNAPSHOT_DIR:-$(dirname -- "$DEFAULT_HOME")/snapshots}"
+SNAP_DIR_EXPLICIT=0
+[[ -n "${LUMEN_SNAPSHOT_DIR:-}" ]] && SNAP_DIR_EXPLICIT=1
+MODE="--verify"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --snapshot-dir)
+      [[ $# -ge 2 ]] || { echo "ERROR: --snapshot-dir requires a value." >&2; exit 2; }
+      SNAP_DIR="$2"
+      SNAP_DIR_EXPLICIT=1
+      shift 2
+      ;;
+    --home)
+      [[ $# -ge 2 ]] || { echo "ERROR: --home requires a value." >&2; exit 2; }
+      DEFAULT_HOME="$2"
+      (( SNAP_DIR_EXPLICIT == 0 )) && SNAP_DIR="$(dirname -- "$DEFAULT_HOME")/snapshots"
+      shift 2
+      ;;
+    --verify|--no-verify)
+      MODE="$1"
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: $(basename "$0") [--home DIR] [--snapshot-dir DIR] [--verify|--no-verify]"
+      exit 0
+      ;;
+    *)
+      if [[ "$1" == *.tar.gz || "$1" == */snapshots || -d "$1" ]]; then
+        SNAP_DIR="$1"
+        shift
+      else
+        echo "ERROR: unknown option '$1'." >&2
+        exit 2
+      fi
+      ;;
+  esac
+done
 
 echo "========================================="
 echo "         Snapshot Status Report"

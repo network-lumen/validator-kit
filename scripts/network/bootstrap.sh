@@ -15,11 +15,11 @@ umask 077
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-LUMEN_BIN="${REPO_ROOT}/bin/lumend"
+LUMEN_BIN="${LUMEND_BIN:-${LUMEN_TARGET:-${REPO_ROOT}/bin/lumend}}"
 VALIDATOR_CFG_DIR="${REPO_ROOT}/config/validator"
 GENESIS_FILE_REPO="${REPO_ROOT}/networks/mainnet/genesis.json"
 
-HOME_DIR="$HOME/.lumen"
+HOME_DIR="${LUMEN_HOME:-${HOME:-/root}/.lumen}"
 # Use an encrypted keyring by default. Set KEYRING=test only for disposable
 # local development chains, never for a production network or real funds.
 KEYRING="${KEYRING:-file}"

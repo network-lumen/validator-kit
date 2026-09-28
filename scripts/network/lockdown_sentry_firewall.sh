@@ -136,10 +136,13 @@ if [[ "$ASSUME_YES" -ne 1 ]]; then
 fi
 
 BACKUP_DATE="$(date +%Y%m%d_%H%M%S)"
+BACKUP_DIR="${FIREWALL_BACKUP_DIR:-/var/backups/lumen-firewall}"
+mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
 
 echo "Backing up existing rules..."
-iptables-save  >"/root/iptables-backup-sentry-${BACKUP_DATE}.v4"  || true
-ip6tables-save >"/root/ip6tables-backup-sentry-${BACKUP_DATE}.v6" || true
+iptables-save  >"$BACKUP_DIR/iptables-backup-sentry-${BACKUP_DATE}.v4"  || true
+ip6tables-save >"$BACKUP_DIR/ip6tables-backup-sentry-${BACKUP_DATE}.v6" || true
 
 echo "Applying IPv4 rules..."
 
@@ -183,8 +186,8 @@ ip6tables -A INPUT -i "$TAIL_IF" -p tcp --dport "$GRAFANA_PORT" -j ACCEPT
 
 echo "✔ Sentry firewall rules applied."
 echo "Backups:"
-echo "  /root/iptables-backup-sentry-${BACKUP_DATE}.v4"
-echo "  /root/ip6tables-backup-sentry-${BACKUP_DATE}.v6"
+echo "  $BACKUP_DIR/iptables-backup-sentry-${BACKUP_DATE}.v4"
+echo "  $BACKUP_DIR/ip6tables-backup-sentry-${BACKUP_DATE}.v6"
 echo
 echo "Note: Grafana and Prometheus are now only reachable over Tailscale."
 echo "      To persist these rules across reboots, save them with an"

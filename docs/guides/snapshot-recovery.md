@@ -10,6 +10,16 @@ and verify the configured service:
   --snapshot "$HOME/snapshots/block_123_1.tar.gz"
 ```
 
+Snapshot directory defaults are user-relative: `LUMEN_SNAPSHOT_DIR`, when set,
+takes precedence; otherwise the directory beside the resolved node home is
+used (for example, `$HOME/snapshots` for `$HOME/.lumen`). Use
+`--snapshot-dir DIR` to select a different location. Snapshot status follows
+the same policy:
+
+```bash
+./scripts/lumen-node snapshot status --home "$HOME/.lumen"
+```
+
 Remote HTTPS snapshots are supported. The helper downloads to temporary
 storage, validates the archive structure and `snapshot.json` SHA256, stages the
 archive, rejects traversal and special-file entries, and only then changes the

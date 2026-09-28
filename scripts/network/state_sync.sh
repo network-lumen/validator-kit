@@ -27,7 +27,7 @@ Options:
 EOF
 }
 
-HOME_DIR="$HOME/.lumen"
+HOME_DIR="${LUMEN_HOME:-${HOME:-/root}/.lumen}"
 RPC_INPUT=""
 LAST=100
 TRUST_PERIOD="168h0m0s"
@@ -125,7 +125,7 @@ if (( ${#RPCS[@]} < 1 || ${#RPCS[@]} > 2 )); then
   exit 1
 fi
 for i in "${!RPCS[@]}"; do
-  RPCS[$i]="${RPCS[$i]%/}"
+  RPCS[i]="${RPCS[i]%/}"
   if [[ -z "${RPCS[$i]}" ]]; then
     echo "ERROR: RPC endpoint $((i + 1)) is empty." >&2
     exit 1

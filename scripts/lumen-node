@@ -62,7 +62,11 @@ EOF
 }
 state_sync_help() { exec "$SCRIPT_DIR/network/state_sync.sh" --help; }
 upgrade_help() { echo "Usage: ./scripts/lumen-node upgrade <prepare|status> [arguments]"; echo "Use 'upgrade prepare --help' or 'upgrade status --help' for details."; }
-snapshot_help() { echo "Usage: ./scripts/lumen-node snapshot <status|restore> [arguments]"; echo "Use 'snapshot restore --help' for restore options."; }
+snapshot_help() {
+  echo "Usage: ./scripts/lumen-node snapshot <status|restore> [arguments]"
+  echo "Snapshot defaults follow LUMEN_SNAPSHOT_DIR or the resolved node/operator home."
+  echo "Use 'snapshot status --help' or 'snapshot restore --help' for options."
+}
 backup_help() { echo "Usage: ./scripts/lumen-node backup export [HOME_DIR] [SNAP_DIR] [OUT_DIR]"; }
 
 run_deploy() {

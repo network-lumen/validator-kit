@@ -24,9 +24,10 @@ umask 077
 ###############################################
 
 DEFAULT_HOME="${HOME:-/root}"
-HOME_DIR="${1:-${DEFAULT_HOME}/.lumen}"
-SNAP_DIR="${2:-${DEFAULT_HOME}/snapshots}"
-OUT_DIR="${3:-${DEFAULT_HOME}/exports}"
+HOME_DIR="${1:-${LUMEN_HOME:-${DEFAULT_HOME}/.lumen}}"
+OPERATOR_HOME="$(dirname -- "$HOME_DIR")"
+SNAP_DIR="${2:-${LUMEN_SNAPSHOT_DIR:-${OPERATOR_HOME}/snapshots}}"
+OUT_DIR="${3:-${LUMEN_BACKUP_DIR:-${OPERATOR_HOME}/exports}}"
 
 BACKUP_DIR="$HOME_DIR/first-node.bak"
 

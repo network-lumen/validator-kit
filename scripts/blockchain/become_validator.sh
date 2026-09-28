@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-HOME_DIR="${HOME_DIR:-$HOME/.lumen}"
+HOME_DIR="${HOME_DIR:-${LUMEN_HOME:-${HOME:-/root}/.lumen}}"
 BIN="${BIN:-lumend}"
 # Use an encrypted, password-protected keyring by default. Override with
 # KEYRING=os when a configured OS keyring is available on the host.

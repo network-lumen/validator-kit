@@ -56,6 +56,8 @@ fi
 
 HOME_DIR="${1:-${DEFAULT_HOME}/.lumen}"
 RUN_USER="${2:-${DEFAULT_USER}}"
+RUN_HOME="$(getent passwd "$RUN_USER" 2>/dev/null | cut -d: -f6 || true)"
+RUN_HOME="${RUN_HOME:-${DEFAULT_HOME}}"
 # Try to suggest a reasonable default for the lumend binary:
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -178,6 +180,7 @@ Wants=network-online.target
 
 [Service]
 User=${RUN_USER}
+Environment=HOME=${RUN_HOME}
 Environment=DAEMON_NAME=lumend
 Environment=DAEMON_HOME=${HOME_DIR}
 Environment=DAEMON_ALLOW_DOWNLOAD_BINARIES=false
@@ -198,6 +201,7 @@ Wants=network-online.target
 
 [Service]
 User=${RUN_USER}
+Environment=HOME=${RUN_HOME}
 ExecStart=${BIN_PATH} start --home ${HOME_DIR}
 Restart=on-failure
 LimitNOFILE=65535
@@ -214,6 +218,7 @@ Wants=network-online.target
 
 [Service]
 User=${RUN_USER}
+Environment=HOME=${RUN_HOME}
 ExecStart=${BIN_PATH} start --home ${HOME_DIR}
 Restart=on-failure
 LimitNOFILE=65535

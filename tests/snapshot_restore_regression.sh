@@ -44,6 +44,21 @@ chmod 0755 "$FIXTURE/mock/pgrep"
 status_report="$("$REPO_ROOT/scripts/snapshot/snapshots_status.sh" "$FIXTURE/snapshots" --verify)"
 grep -q 'Integrity: OK' <<< "$status_report"
 
+HOME="$FIXTURE/home/hamster" LUMEN_HOME='' \
+  "$REPO_ROOT/scripts/snapshot/snapshots_status.sh" --snapshot-dir "$FIXTURE/snapshots" --verify >/dev/null
+mkdir -p "$FIXTURE/home/hamster/snapshots"
+cp "$FIXTURE/snapshots/block_123_1.tar.gz" "$FIXTURE/home/hamster/snapshots/"
+default_status="$(HOME="$FIXTURE/home/hamster" LUMEN_HOME='' \
+  "$REPO_ROOT/scripts/snapshot/snapshots_status.sh")"
+grep -q "Snapshot directory: $FIXTURE/home/hamster/snapshots" <<< "$default_status"
+
+mkdir -p "$FIXTURE/home/hamster/.lumen/first-node.bak"
+printf 'protected-backup\n' > "$FIXTURE/home/hamster/.lumen/first-node.bak/metadata.txt"
+export_report="$(HOME="$FIXTURE/home/hamster" LUMEN_HOME='' \
+  "$REPO_ROOT/scripts/network/export_backup.sh")"
+grep -q "OUT_DIR   = $FIXTURE/home/hamster/exports" <<< "$export_report"
+[[ -d "$FIXTURE/home/hamster/exports" ]]
+
 fullnode="$FIXTURE/fullnode"
 mkdir -p "$fullnode/config" "$fullnode/data"
 printf 'fullnode-config\n' > "$fullnode/config/node_key.json"

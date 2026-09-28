@@ -15,8 +15,8 @@ set -euo pipefail
 #   - leaves OUTPUT fully open
 #
 # It creates a backup of existing rules under:
-#   /root/iptables-backup-<date>.v4
-#   /root/ip6tables-backup-<date>.v6
+#   /var/backups/lumen-firewall/iptables-backup-<date>.v4
+#   /var/backups/lumen-firewall/ip6tables-backup-<date>.v6
 #
 # After running this once, the validator should only be reachable:
 #   - over Tailscale/Headscale (P2P + metrics + SSH)
@@ -130,10 +130,13 @@ if [[ "$ASSUME_YES" -ne 1 ]]; then
 fi
 
 BACKUP_DATE="$(date +%Y%m%d_%H%M%S)"
+BACKUP_DIR="${FIREWALL_BACKUP_DIR:-/var/backups/lumen-firewall}"
+mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
 
 echo "Backing up existing rules..."
-iptables-save   >"/root/iptables-backup-${BACKUP_DATE}.v4"  || true
-ip6tables-save  >"/root/ip6tables-backup-${BACKUP_DATE}.v6" || true
+iptables-save   >"$BACKUP_DIR/iptables-backup-${BACKUP_DATE}.v4"  || true
+ip6tables-save  >"$BACKUP_DIR/ip6tables-backup-${BACKUP_DATE}.v6" || true
 
 echo "Applying IPv4 rules..."
 
@@ -176,8 +179,8 @@ ip6tables -A INPUT -i "$TAIL_IF" -p tcp --dport "$NODE_EXPORTER_PORT" -j ACCEPT
 
 echo "✔ Firewall rules applied."
 echo "Backups:"
-echo "  /root/iptables-backup-${BACKUP_DATE}.v4"
-echo "  /root/ip6tables-backup-${BACKUP_DATE}.v6"
+echo "  $BACKUP_DIR/iptables-backup-${BACKUP_DATE}.v4"
+echo "  $BACKUP_DIR/ip6tables-backup-${BACKUP_DATE}.v6"
 echo
 echo "Note: To persist these rules across reboots, install a persistence"
 echo "      mechanism (e.g. 'iptables-persistent' on Ubuntu) and save them."

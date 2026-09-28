@@ -20,7 +20,7 @@ fi
 MONIKER="$1"
 shift || true
 
-HOME_DIR="$HOME/.lumen"
+HOME_DIR="${LUMEN_HOME:-${HOME:-/root}/.lumen}"
 FORCE=0
 PUBLIC_API=0
 SEED_MODE=0

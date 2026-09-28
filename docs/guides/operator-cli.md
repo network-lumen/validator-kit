@@ -25,7 +25,7 @@ Examples:
 ./scripts/lumen-node deploy node-1 --role validator --service-mode cosmovisor
 ./scripts/lumen-node doctor --progress
 ./scripts/lumen-node state-sync --home "$HOME/.lumen" --rpc https://rpc.example:26657
-./scripts/lumen-node snapshot status "$HOME/snapshots"
+./scripts/lumen-node snapshot status --snapshot-dir "$HOME/snapshots"
 ./scripts/lumen-node upgrade status --home "$HOME/.lumen"
 ```
 
