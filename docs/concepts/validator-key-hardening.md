@@ -163,6 +163,10 @@ the following from the repository root:
 ./scripts/network/scrub_validator_keys.sh
 ```
 
+Use `--include-backups` when local backup directories must also be removed. The
+scrubber covers `first-node.bak`, `validator-node.bak`, and legacy
+`join-node.bak` directories when present.
+
 This script is designed to:
 
 - **remove transaction-level keys only**

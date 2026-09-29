@@ -57,7 +57,10 @@ printf 'protected-backup\n' > "$FIXTURE/home/hamster/.lumen/validator-node.bak/m
 export_report="$(HOME="$FIXTURE/home/hamster" LUMEN_HOME='' \
   "$REPO_ROOT/scripts/network/export_backup.sh")"
 grep -q "OUT_DIR   = $FIXTURE/home/hamster/exports" <<< "$export_report"
-[[ -d "$FIXTURE/home/hamster/exports" ]]
+export_archive="$(find "$FIXTURE/home/hamster/exports" -maxdepth 1 -type f \
+  -name 'lumen_validator_backup_*.tar.gz' -print -quit)"
+[[ -n "$export_archive" ]]
+tar -tzf "$export_archive" | grep -q '^backup/first-node.bak/'
 
 fullnode="$FIXTURE/fullnode"
 mkdir -p "$fullnode/config" "$fullnode/data"

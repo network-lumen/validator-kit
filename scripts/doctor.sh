@@ -455,7 +455,7 @@ else
 fi
 
 # High-value Phase 2 checks without recursively scanning the host.
-for backup_dir in "$HOME_DIR/first-node.bak" "$HOME_DIR/validator-node.bak"; do
+for backup_dir in "$HOME_DIR/first-node.bak" "$HOME_DIR/validator-node.bak" "$HOME_DIR/join-node.bak"; do
   if [[ -d "$backup_dir" ]]; then
     mode="$(stat -c '%a' "$backup_dir" 2>/dev/null || true)"
     if [[ "$mode" =~ ^[0-7]+$ ]] && (( 8#$mode & 77 )); then
@@ -466,7 +466,10 @@ for backup_dir in "$HOME_DIR/first-node.bak" "$HOME_DIR/validator-node.bak"; do
   fi
 done
 
-for legacy_mnemonic in "$HOME_DIR/first-node.bak/validator_mnemonic.txt" "$HOME_DIR/validator-node.bak/validator_mnemonic.txt"; do
+for legacy_mnemonic in \
+  "$HOME_DIR/first-node.bak/validator_mnemonic.txt" \
+  "$HOME_DIR/validator-node.bak/validator_mnemonic.txt" \
+  "$HOME_DIR/join-node.bak/validator_mnemonic.txt"; do
   if [[ -f "$legacy_mnemonic" ]]; then
     warn "Legacy secret" "plaintext mnemonic backup detected: $legacy_mnemonic"
   fi

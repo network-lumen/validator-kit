@@ -13,7 +13,7 @@ set -euo pipefail
 # What this script can remove:
 #   - $HOME/.lumen/keyring-*    (Cosmos account keys)
 #   - $HOME/.lumen/pqc_keys     (PQC keystore)
-#   - optionally local backups: first-node.bak, join-node.bak
+#   - optionally local backups: first-node.bak, validator-node.bak, join-node.bak
 #   - optionally shell history (~/.bash_history)
 #
 # It does NOT touch:
@@ -30,7 +30,7 @@ Usage: $(basename "$0") [--home DIR] [--include-backups] [--wipe-history] [--yes
 
 Options:
   --home DIR          Lumen home directory (default: \$HOME/.lumen).
-  --include-backups   Also delete local backups (first-node.bak, join-node.bak).
+  --include-backups   Also delete local backups (first-node.bak, validator-node.bak, join-node.bak).
   --wipe-history      Truncate ~/.bash_history for the current user.
   --yes               Do not prompt for confirmation (non-interactive).
   -h, --help          Show this help and exit.
@@ -99,7 +99,7 @@ if [[ -d "$HOME_DIR/pqc_keys" ]]; then
 fi
 
 if [[ "$INCLUDE_BACKUPS" -eq 1 ]]; then
-  for d in "$HOME_DIR/first-node.bak" "$HOME_DIR/join-node.bak"; do
+  for d in "$HOME_DIR/first-node.bak" "$HOME_DIR/validator-node.bak" "$HOME_DIR/join-node.bak"; do
     [[ -d "$d" ]] && TARGETS+=("$d")
   done
 fi

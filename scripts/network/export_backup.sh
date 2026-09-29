@@ -6,10 +6,12 @@ umask 077
 # Lumen — Export validator backup + snapshot
 #
 # This script bundles:
-# - the validator bootstrap backup (first-node.bak)
+# - the validator backup (first-node.bak or validator-node.bak)
 # - the latest chain snapshot (if available)
 # into a single tar.gz archive that you can copy
 # off the server for disaster recovery.
+# The archive uses the stable path backup/first-node.bak even when the source
+# directory is validator-node.bak, preserving the existing export format.
 #
 # Usage:
 #   ./scripts/network/export_backup.sh [HOME_DIR] [SNAP_DIR] [OUT_DIR]
@@ -64,6 +66,8 @@ trap cleanup EXIT
 mkdir -p "$TMP_DIR/backup"
 
 echo "→ Copying validator backup..."
+# Keep the archive path stable so restore procedures do not depend on which
+# workflow created the source backup.
 cp -r "$BACKUP_DIR" "$TMP_DIR/backup/first-node.bak"
 
 if [[ -n "$SNAPSHOT" ]]; then
