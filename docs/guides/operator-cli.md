@@ -26,7 +26,12 @@ Examples:
 ./scripts/lumen-node doctor --progress
 ./scripts/lumen-node state-sync --home "$HOME/.lumen" --rpc https://rpc.example:26657
 ./scripts/lumen-node snapshot status --snapshot-dir "$HOME/snapshots"
+./scripts/lumen-node snapshot restore --home "$HOME/.lumen" \
+  --snapshot "$HOME/snapshots/block_123_1.tar.gz" --non-interactive
+./scripts/lumen-node upgrade prepare --home "$HOME/.lumen" \
+  --name upgrade-name --version v1.6.0
 ./scripts/lumen-node upgrade status --home "$HOME/.lumen"
+./scripts/lumen-node backup export "$HOME/.lumen" "$HOME/snapshots" "$HOME/exports"
 ```
 
 The CLI does not wrap every repository script. Firewall changes, peer

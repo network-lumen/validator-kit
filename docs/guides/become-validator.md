@@ -4,6 +4,9 @@ This guide starts with a healthy, synchronized node created by the
 [join workflow](join-and-sync.md). Run commands from the repository root on
 the node host. The join step alone does not create a validator.
 
+For the complete identity model, including account, PQC, consensus, signing
+state, and node keys, read [Lumen keys and PQC](../concepts/lumen-keys-and-pqc.md).
+
 ## 1. Create or import an account
 
 Use the encrypted `file` keyring on a headless validator host. It prompts for
@@ -37,8 +40,9 @@ chain, obtains the node's consensus public key, and broadcasts a validator
 creation transaction with minimal self-delegation. It can optionally create
 `~/.lumen/validator-node.bak`, containing account/PQC keys, consensus and node
 keys, and configuration metadata. The directory is restricted to the owner;
-export it off-host and store it securely. It does not contain the mnemonic or
-validator signing state.
+export it off-host and store it securely. `backup export` recognizes both this
+directory and the bootstrap-era `first-node.bak`. It does not contain the
+mnemonic or validator signing state.
 
 The consensus key is highly sensitive and must remain on exactly one active
 validator. `priv_validator_state.json` is safety-critical signing state, not an

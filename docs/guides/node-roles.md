@@ -26,7 +26,8 @@ replacement operation.
 
 `validator` provides validator-suitable configuration but does not create,
 register, or stake a validator. A standalone validator remains supported;
-sentry private-peer topology and firewall rules are separate future work.
+sentry private-peer topology and firewall changes remain separate explicit
+operational setup.
 
 State sync is independent of role. Pass `--rpc URL` to the deployment flow
 when state sync is desired; use `--non-interactive` for unattended operation.

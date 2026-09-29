@@ -1,7 +1,12 @@
 # Manual node setup
 
-This is the transparent equivalent of `./scripts/join.sh` for operators who
-need to inspect each step or recover a node. The commands below configure the
+This legacy guide is retained for compatibility. Use the more complete
+[manual deployment guide](manual-deployment.md), which documents the current
+Cosmovisor-first service layout and the underlying deployment steps.
+
+This is a legacy detailed full-node procedure. The current canonical equivalent
+is `./scripts/lumen-node deploy`; use the [manual deployment guide](manual-deployment.md)
+for the complete Cosmovisor-first procedure. The commands below configure the
 current mainnet. The automated join workflow remains the recommended path for
 new installations.
 

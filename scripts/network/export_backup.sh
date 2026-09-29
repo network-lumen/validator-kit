@@ -29,16 +29,22 @@ OPERATOR_HOME="$(dirname -- "$HOME_DIR")"
 SNAP_DIR="${2:-${LUMEN_SNAPSHOT_DIR:-${OPERATOR_HOME}/snapshots}}"
 OUT_DIR="${3:-${LUMEN_BACKUP_DIR:-${OPERATOR_HOME}/exports}}"
 
-BACKUP_DIR="$HOME_DIR/first-node.bak"
+BACKUP_DIR=""
+for candidate in "$HOME_DIR/first-node.bak" "$HOME_DIR/validator-node.bak"; do
+  if [[ -d "$candidate" ]]; then
+    BACKUP_DIR="$candidate"
+    break
+  fi
+done
 
 echo "HOME_DIR  = $HOME_DIR"
 echo "SNAP_DIR  = $SNAP_DIR"
 echo "OUT_DIR   = $OUT_DIR"
 echo
 
-if [[ ! -d "$BACKUP_DIR" ]]; then
-  echo "❌ Validator backup not found at $BACKUP_DIR"
-  echo "Run bootstrap.sh first on this host."
+if [[ -z "$BACKUP_DIR" ]]; then
+  echo "❌ Validator backup not found under $HOME_DIR"
+  echo "Expected first-node.bak or validator-node.bak."
   exit 1
 fi
 

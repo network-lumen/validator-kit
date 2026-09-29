@@ -40,6 +40,11 @@ under the snapshot directory as `recovery-safety-*`, with mode `0700` for
 directories and `0600` for files. These are rollback-safety backups, not a
 complete off-host validator disaster-recovery backup.
 
+Snapshot creation is currently provided by the installed snapshot service
+script, not by a first-class `lumen-node snapshot create` command. Dedicated
+one-shot creation, signing-state exclusion, and timer simplification remain
+Phase 10B work.
+
 After a successful restore, run:
 
 ```bash

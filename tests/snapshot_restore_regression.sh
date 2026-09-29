@@ -52,8 +52,8 @@ default_status="$(HOME="$FIXTURE/home/hamster" LUMEN_HOME='' \
   "$REPO_ROOT/scripts/snapshot/snapshots_status.sh")"
 grep -q "Snapshot directory: $FIXTURE/home/hamster/snapshots" <<< "$default_status"
 
-mkdir -p "$FIXTURE/home/hamster/.lumen/first-node.bak"
-printf 'protected-backup\n' > "$FIXTURE/home/hamster/.lumen/first-node.bak/metadata.txt"
+mkdir -p "$FIXTURE/home/hamster/.lumen/validator-node.bak"
+printf 'protected-backup\n' > "$FIXTURE/home/hamster/.lumen/validator-node.bak/metadata.txt"
 export_report="$(HOME="$FIXTURE/home/hamster" LUMEN_HOME='' \
   "$REPO_ROOT/scripts/network/export_backup.sh")"
 grep -q "OUT_DIR   = $FIXTURE/home/hamster/exports" <<< "$export_report"
