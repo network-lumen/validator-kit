@@ -8,7 +8,7 @@
 # It is not a validator and should not hold any consensus or funds-signing keys.
 
 # Base config largely mirrors the fullnode profile.
-minimum-gas-prices = ""
+minimum-gas-prices = "0ulmn"
 query-gas-limit = "0"
 pruning = "custom"
 pruning-keep-recent = "1000"

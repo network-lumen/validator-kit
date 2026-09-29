@@ -1,0 +1,256 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo ""
+echo "=== Lumen Snapshot Auto-Installer ==="
+echo ""
+
+# This script installs a snapshot binary under /usr/local/bin and a
+# systemd unit under /etc/systemd/system. It must be run as root, e.g.:
+#   sudo ./scripts/install/lumen-snapshot_service.sh
+if [[ "$EUID" -ne 0 ]]; then
+  echo "ERROR: this installer needs root privileges (sudo)."
+  echo "Re-run it with: sudo ./scripts/install/lumen-snapshot_service.sh"
+  exit 1
+fi
+
+# Resolve the operator account without assuming a particular username. The
+# node-home owner takes precedence when an explicit existing home is supplied.
+if [[ -n "${SUDO_USER:-}" && "${SUDO_USER:-}" != "root" ]]; then
+  DEFAULT_USER_HOME="$(eval echo "~${SUDO_USER}")"
+  DEFAULT_USER="${SUDO_USER}"
+else
+  DEFAULT_USER_HOME="${HOME:-/root}"
+  DEFAULT_USER="${USER:-root}"
+fi
+
+read -r -p "Node HOME directory? (${DEFAULT_USER_HOME}/.lumen): " HOME_DIR
+HOME_DIR=${HOME_DIR:-${DEFAULT_USER_HOME}/.lumen}
+
+if [[ -d "$HOME_DIR" ]]; then
+  NODE_OWNER="$(stat -c '%U' "$HOME_DIR" 2>/dev/null || true)"
+  if [[ -n "$NODE_OWNER" && "$NODE_OWNER" != UNKNOWN && "$NODE_OWNER" != root ]] && id "$NODE_OWNER" >/dev/null 2>&1; then
+    DEFAULT_USER="$NODE_OWNER"
+  fi
+fi
+SERVICE_USER="${SNAP_SERVICE_USER:-${DEFAULT_USER}}"
+id "$SERVICE_USER" >/dev/null 2>&1 || {
+  echo "ERROR: snapshot service user does not exist: $SERVICE_USER" >&2
+  exit 1
+}
+SERVICE_HOME="$(getent passwd "$SERVICE_USER" | cut -d: -f6)"
+SERVICE_HOME="${SERVICE_HOME:-${DEFAULT_USER_HOME}}"
+
+read -r -p "Block interval between snapshots? (50): " INTERVAL
+INTERVAL=${INTERVAL:-50}
+
+read -r -p "Snapshots to keep? (10): " RETENTION
+RETENTION=${RETENTION:-10}
+
+DEFAULT_SNAPSHOT_DIR="$(dirname -- "$HOME_DIR")/snapshots"
+read -r -p "Snapshot directory? (${DEFAULT_SNAPSHOT_DIR}): " SNAP_DIR
+SNAP_DIR=${SNAP_DIR:-${DEFAULT_SNAPSHOT_DIR}}
+
+echo ""
+read -r -p "Install systemd service? (Y/n): " INSTALL_SYSTEMD
+INSTALL_SYSTEMD=${INSTALL_SYSTEMD:-Y}
+
+RPC="http://127.0.0.1:26657"
+SNAP_SCRIPT="/usr/local/bin/lumen-snapshot.sh"
+
+cat > "$SNAP_SCRIPT" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# These defaults are baked in at install time, but can be
+# overridden at runtime via environment variables:
+#   SNAP_RPC, SNAP_DIR, SNAP_INTERVAL, SNAP_RETENTION, SNAP_HOME_DIR
+RPC="${SNAP_RPC:-__RPC__}"
+SNAP_DIR="${SNAP_DIR:-__SNAP_DIR__}"
+INTERVAL=${SNAP_INTERVAL:-__INTERVAL__}
+RETENTION=${SNAP_RETENTION:-__RETENTION__}
+HOME_DIR="${SNAP_HOME_DIR:-__HOME_DIR__}"
+SERVICE_NAME="${SERVICE_NAME:-lumend}"
+
+hash_dir() {
+  local dir="$1"
+  find "$dir" -type f -printf '%P\0' \
+    | sort -z \
+    | while IFS= read -r -d '' rel; do
+        sha256sum "$dir/$rel" | awk '{print $1}'
+      done \
+    | sha256sum | awk '{print $1}'
+}
+
+wait_for_node_stop() {
+    for _ in {1..20}; do
+        if systemctl is-active --quiet "$SERVICE_NAME"; then
+            sleep 0.5
+            continue
+        fi
+        if command -v pgrep >/dev/null 2>&1 && pgrep -x lumend >/dev/null 2>&1; then
+            sleep 0.5
+            continue
+        fi
+        return 0
+    done
+    return 1
+}
+
+mkdir -p "$SNAP_DIR"
+
+LOCK_FILE="$SNAP_DIR/.lumen-snapshot.lock"
+exec 9> "$LOCK_FILE" || exit 0
+if ! flock -n 9; then
+  echo "[warn] snapshot script already running"
+  exit 0
+fi
+
+while true; do
+    raw=$(curl -s "$RPC/status" || true)
+    if [[ -z "$raw" ]]; then
+        sleep 1
+        continue
+    fi
+
+    catching_up=$(echo "$raw" | jq -r '.result.sync_info.catching_up // empty')
+    if [[ "$catching_up" == "true" ]]; then
+        sleep 1
+        continue
+    fi
+
+    height=$(echo "$raw" | jq -r '.result.sync_info.latest_block_height // empty')
+    if [[ -z "$height" ]]; then
+        sleep 1
+        continue
+    fi
+
+    found=$(find "$SNAP_DIR" -maxdepth 1 -type f -name "block_${height}_*.tar.gz" | wc -l)
+    if (( found > 0 )); then
+        sleep 1
+        continue
+    fi
+
+    if ! (( height % INTERVAL == 0 )); then
+        sleep 1
+        continue
+    fi
+
+    echo "[*] Stopping $SERVICE_NAME for snapshot..."
+    if ! systemctl stop "$SERVICE_NAME" || ! wait_for_node_stop; then
+        echo "[error] failed to stop and verify $SERVICE_NAME; snapshot skipped"
+        systemctl start "$SERVICE_NAME" || true
+        sleep 1
+        continue
+    fi
+
+    TMP_DIR=$(mktemp -d)
+    if ! cp -r "$HOME_DIR/data" "$TMP_DIR/data" 2>/dev/null; then
+        echo "[error] failed to copy data directory"
+        rm -rf "$TMP_DIR"
+        systemctl start "$SERVICE_NAME" || true
+        sleep 1
+        continue
+    fi
+
+    echo "[*] Starting $SERVICE_NAME again..."
+    if ! systemctl start "$SERVICE_NAME"; then
+        echo "[error] failed to restart $SERVICE_NAME; snapshot skipped"
+        rm -rf "$TMP_DIR"
+        sleep 1
+        continue
+    fi
+
+    DATA_HASH=$(hash_dir "$TMP_DIR/data")
+    now_ts=$(date +%s)
+
+    cat > "$TMP_DIR/snapshot.json" <<JSON
+{
+  "height": $height,
+  "timestamp": $now_ts,
+  "sha256": "$DATA_HASH"
+}
+JSON
+
+    SNAP_NAME="block_${height}_${now_ts}.tar.gz"
+    echo "[+] Snapshot height=$height -> $SNAP_DIR/$SNAP_NAME"
+
+    if ! tar -czf "$SNAP_DIR/$SNAP_NAME" -C "$TMP_DIR" data snapshot.json; then
+        echo "[error] tar failed"
+        rm -rf "$TMP_DIR"
+        sleep 1
+        continue
+    fi
+
+    rm -rf "$TMP_DIR"
+
+    total=$(find "$SNAP_DIR" -maxdepth 1 -type f -name "block_*.tar.gz" | wc -l)
+    if (( total > RETENTION )); then
+        to_delete=$(( total - RETENTION ))
+        echo "[*] purging $to_delete old snapshots"
+        find "$SNAP_DIR" -maxdepth 1 -type f -name "block_*.tar.gz" -printf "%T@ %p\n" | sort -n | head -n "$to_delete" | awk '{print $2}' | xargs -r rm -f --
+    fi
+
+    sleep 1
+done
+EOF
+
+sed -i \
+  -e "s|__RPC__|$RPC|g" \
+  -e "s|__SNAP_DIR__|$SNAP_DIR|g" \
+  -e "s|__INTERVAL__|$INTERVAL|g" \
+  -e "s|__RETENTION__|$RETENTION|g" \
+  -e "s|__HOME_DIR__|$HOME_DIR|g" \
+  "$SNAP_SCRIPT"
+
+chmod +x "$SNAP_SCRIPT"
+echo "[OK] Snapshot script installed at $SNAP_SCRIPT"
+
+if [[ "$INSTALL_SYSTEMD" =~ ^[Yy]$ ]]; then
+
+    SERVICE_FILE="/etc/systemd/system/lumen-snapshot.service"
+    TIMER_FILE="/etc/systemd/system/lumen-snapshot.timer"
+
+    cat > "$SERVICE_FILE" <<EOF
+[Unit]
+Description=Lumen automatic snapshots
+After=network-online.target lumen.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$SERVICE_USER
+Environment=HOME=$SERVICE_HOME
+ExecStart=$SNAP_SCRIPT
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    cat > "$TIMER_FILE" <<EOF
+[Unit]
+Description=Lumen snapshot timer
+
+[Timer]
+OnBootSec=10
+OnUnitActiveSec=2
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable --now lumen-snapshot.timer
+
+    echo "[OK] Systemd service installed: $SERVICE_FILE"
+    echo "[OK] Systemd timer installed: $TIMER_FILE"
+    echo "[OK] Snapshot loop is active"
+else
+    echo "Systemd installation skipped."
+fi
+
+echo ""
+echo "Installation complete"
+echo "Check: systemctl status lumen-snapshot"

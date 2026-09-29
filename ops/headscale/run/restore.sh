@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Restore a Headscale state snapshot created by run/backup.sh.
 #
-# Usage (from deploy/headscale):
+# Usage (from ops/headscale):
 #   ./run/restore.sh /path/to/headscale_state_YYYYMMDD_HHMMSS.tar.gz
 #
 # This will:
@@ -66,4 +66,3 @@ echo "[4/4] Starting headscale..."
 
 echo
 echo "✅ Restore complete. Headscale is running with the restored state."
-

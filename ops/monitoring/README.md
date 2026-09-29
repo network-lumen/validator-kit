@@ -9,7 +9,7 @@ Headscale/Tailscale network, while exposing Grafana securely.
 On a sentry host that already runs a fullnode:
 
 ```bash
-cd deploy/monitoring
+cd ops/monitoring
 cp .env.example .env              # optional: adjust ports / admin user
 vim prometheus.yml                # set VALIDATOR Headscale IP
 docker compose up -d
