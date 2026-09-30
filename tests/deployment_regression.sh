@@ -109,6 +109,18 @@ run_deploy() {
 }
 
 : > "$FIXTURE/services.log"
+# Prove fresh deployment can consume network metadata without an explicit
+# LUMEN_RELEASE_TAG override. The fixture uses v1.4.3 only to avoid downloads.
+printf 'LUMEND_VERSION="v1.4.3"\n' > "$FIXTURE/repo/networks/mainnet/release.env"
+network_default_home="$FIXTURE/network-default/.lumen"
+SERVICE_LOG="$FIXTURE/services.log" UNIT_OUTPUT="$FIXTURE/network-default.unit" \
+  LUMEN_HOME="$network_default_home" COSMOVISOR_BIN="$FIXTURE/cosmovisor" \
+  LUMEN_RELEASE_URL="file://$FIXTURE/linux-amd64-v1.4.3.tar.gz" \
+  LUMEN_CHECKSUM_URL="file://$FIXTURE/SHA256SUMS" \
+  HOME="$FIXTURE/network-default" PATH="$FIXTURE/mock:$PATH" \
+    "$FIXTURE/repo/scripts/lumen-node" deploy network-default --non-interactive >/dev/null
+[[ -x "$network_default_home/cosmovisor/genesis/bin/lumend" ]]
+
 for role in fullnode rpc validator sentry seed; do
   run_deploy "$role"
 done

@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 HOME_DIR="${LUMEN_HOME:-${HOME}/.lumen}"
 BIN_PATH="${LUMEND_BIN:-${LUMEN_TARGET:-${REPO_ROOT}/bin/lumend}}"
+NETWORK="${LUMEN_NETWORK:-mainnet}"
 PROGRESS_CHECK=0
 PROGRESS_WAIT="${DOCTOR_PROGRESS_WAIT:-3}"
 FAILURES=0
@@ -19,6 +20,9 @@ RPC_URL=""
 ROLE="unknown"
 SERVICE_MODE="UNKNOWN"
 ACTIVE_BINARY_PATH="UNKNOWN"
+CURRENT_VERSION_OUTPUT=""
+EXPECTED_LUMEND_VERSION=""
+RELEASE_ENV="${REPO_ROOT}/networks/${NETWORK}/release.env"
 
 usage() {
   cat <<EOF
@@ -30,6 +34,7 @@ repairs services and never modifies node configuration or blockchain data.
 Options:
   --home DIR       Node home (default: \$LUMEN_HOME or \$HOME/.lumen).
   --binary PATH    lumend binary (default: \$LUMEND_BIN, \$LUMEN_TARGET, or repo bin/lumend).
+  --network NAME   Network release metadata (default: \$LUMEN_NETWORK or mainnet).
   --progress       Sample RPC height twice to check for progress.
   -h, --help       Show this help.
 
@@ -54,6 +59,12 @@ while [[ $# -gt 0 ]]; do
     --binary)
       [[ $# -ge 2 ]] || { echo "ERROR: --binary requires a value." >&2; exit 2; }
       BIN_PATH="$2"
+      shift
+      ;;
+    --network)
+      [[ $# -ge 2 ]] || { echo "ERROR: --network requires a value." >&2; exit 2; }
+      NETWORK="$2"
+      RELEASE_ENV="${REPO_ROOT}/networks/${NETWORK}/release.env"
       shift
       ;;
     --progress)
@@ -115,6 +126,15 @@ isolated_binary_version() {
   return "$status"
 }
 
+normalize_version() {
+  local raw="$1"
+  if [[ "$raw" =~ (v?[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?) ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]#v}"
+    return 0
+  fi
+  return 1
+}
+
 detect_execution_model() {
   local service_exec="" main_pid="" child_pid=""
   if command -v systemctl >/dev/null 2>&1; then
@@ -144,7 +164,25 @@ detect_execution_model() {
 
 echo "Lumen Node Doctor"
 echo "Home: $HOME_DIR"
+echo "Network: $NETWORK"
 echo
+
+if [[ -r "$RELEASE_ENV" ]]; then
+  LUMEND_VERSION=""
+  # shellcheck source=/dev/null
+  source "$RELEASE_ENV"
+  EXPECTED_LUMEND_VERSION="${LUMEND_VERSION:-}"
+  if [[ -z "$EXPECTED_LUMEND_VERSION" ]]; then
+    warn "Network release" "LUMEND_VERSION is missing from $RELEASE_ENV"
+  elif ! normalize_version "$EXPECTED_LUMEND_VERSION" >/dev/null; then
+    warn "Network release" "invalid LUMEND_VERSION in $RELEASE_ENV"
+    EXPECTED_LUMEND_VERSION=""
+  else
+    pass "Network release" "$NETWORK expects lumend $EXPECTED_LUMEND_VERSION"
+  fi
+else
+  warn "Network release" "metadata not found: $RELEASE_ENV"
+fi
 
 ROLE_FILE="$HOME_DIR/validator-kit-role"
 if [[ -f "$ROLE_FILE" ]]; then
@@ -169,6 +207,7 @@ if [[ "$SERVICE_MODE" == COSMOVISOR ]]; then
   if [[ "$ACTIVE_BINARY_PATH" != UNKNOWN && -x "$ACTIVE_BINARY_PATH" ]]; then
     ACTIVE_VERSION="$(isolated_binary_version "$ACTIVE_BINARY_PATH" 2>/dev/null || true)"
     if [[ -n "$ACTIVE_VERSION" ]]; then
+      CURRENT_VERSION_OUTPUT="$ACTIVE_VERSION"
       pass "Running binary" "$ACTIVE_BINARY_PATH: ${ACTIVE_VERSION//$'\n'/ }"
     else
       warn "Running binary" "version could not be read from $ACTIVE_BINARY_PATH"
@@ -185,6 +224,7 @@ else
   if [[ -f "$BIN_PATH" && -x "$BIN_PATH" ]]; then
     BINARY_VERSION="$(isolated_binary_version "$BIN_PATH" 2>&1 || true)"
     if [[ -n "$BINARY_VERSION" ]]; then
+      CURRENT_VERSION_OUTPUT="$BINARY_VERSION"
       pass "Configured binary" "${BIN_PATH}: ${BINARY_VERSION//$'\n'/ }"
     else
       fail "Configured binary" "$BIN_PATH version returned no output."
@@ -192,6 +232,38 @@ else
   else
     fail "Configured binary" "$BIN_PATH is missing or not executable."
   fi
+fi
+
+if [[ -n "$EXPECTED_LUMEND_VERSION" ]]; then
+  EXPECTED_NORMALIZED="$(normalize_version "$EXPECTED_LUMEND_VERSION" || true)"
+  CURRENT_NORMALIZED="$(normalize_version "$CURRENT_VERSION_OUTPUT" || true)"
+  if [[ -z "$CURRENT_VERSION_OUTPUT" ]]; then
+    skip "lumend version" "active/current binary version is unavailable"
+  elif [[ -z "$CURRENT_NORMALIZED" ]]; then
+    warn "lumend version" "could not normalize current output: ${CURRENT_VERSION_OUTPUT//$'\n'/ }"
+  elif [[ "$CURRENT_NORMALIZED" == "$EXPECTED_NORMALIZED" ]]; then
+    pass "lumend version" "${CURRENT_NORMALIZED} (expected ${EXPECTED_NORMALIZED})"
+  elif [[ "$SERVICE_MODE" == COSMOVISOR ]]; then
+    warn "lumend version" "current ${CURRENT_NORMALIZED}, network fresh-node version is ${EXPECTED_NORMALIZED}; inspect upgrade state"
+  else
+    fail "lumend version" "expected ${EXPECTED_NORMALIZED}, found ${CURRENT_NORMALIZED}"
+  fi
+fi
+
+GENESIS_BINARY="$HOME_DIR/cosmovisor/genesis/bin/lumend"
+if [[ -x "$GENESIS_BINARY" ]]; then
+  GENESIS_VERSION_OUTPUT="$(isolated_binary_version "$GENESIS_BINARY" 2>/dev/null || true)"
+  if [[ -n "$GENESIS_VERSION_OUTPUT" ]]; then
+    pass "Cosmovisor genesis" "${GENESIS_BINARY}: ${GENESIS_VERSION_OUTPUT//$'\n'/ }"
+  else
+    warn "Cosmovisor genesis" "version could not be read from $GENESIS_BINARY"
+  fi
+fi
+
+UPGRADE_DIR="$HOME_DIR/cosmovisor/upgrades"
+if [[ -d "$UPGRADE_DIR" ]]; then
+  UPGRADE_COUNT="$(find "$UPGRADE_DIR" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | wc -l)"
+  skip "Prepared upgrades" "$UPGRADE_COUNT directory(s); not compared with the fresh-node version"
 fi
 
 if [[ -d "$HOME_DIR" ]]; then

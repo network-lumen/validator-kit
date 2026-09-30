@@ -150,7 +150,7 @@ echo "[1/4] Ensuring lumend binary is available"
 echo "       (this calls ./scripts/install/download_lumend.sh)"
 # Download first so bootstrap will either succeed or fail before any
 # on-disk state is created with the wrong binary.
-"${DOWNLOAD_SCRIPT}"
+LUMEN_NETWORK="mainnet" "${DOWNLOAD_SCRIPT}"
 
 echo
 echo "[2/4] Bootstrapping initial validator from repo config"

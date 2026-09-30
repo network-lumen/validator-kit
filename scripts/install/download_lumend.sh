@@ -10,11 +10,33 @@ set -euo pipefail
 #
 # LUMEN_RELEASE_URL is an exact archive URL override. When it is set,
 # LUMEN_CHECKSUM_URL must also point to the authoritative SHA256SUMS file.
+# The network release metadata supplies the default version.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-RELEASE_TAG="${LUMEN_RELEASE_TAG:-v1.4.3}"
+NETWORK="${LUMEN_NETWORK:-mainnet}"
+RELEASE_ENV="${REPO_ROOT}/networks/${NETWORK}/release.env"
+
+if [[ -n "${LUMEN_RELEASE_TAG:-}" ]]; then
+  RELEASE_TAG="$LUMEN_RELEASE_TAG"
+  RELEASE_SOURCE="explicit override (LUMEN_RELEASE_TAG)"
+else
+  if [[ ! -r "$RELEASE_ENV" ]]; then
+    echo "ERROR: release metadata not found for network '$NETWORK': $RELEASE_ENV" >&2
+    exit 1
+  fi
+  LUMEND_VERSION=""
+  # shellcheck source=/dev/null
+  source "$RELEASE_ENV"
+  RELEASE_TAG="${LUMEND_VERSION:-}"
+  RELEASE_SOURCE="network metadata ($RELEASE_ENV)"
+fi
+
+if [[ ! "$RELEASE_TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+  echo "ERROR: invalid lumend release version '$RELEASE_TAG' for network '$NETWORK'." >&2
+  exit 1
+fi
 TARGET="${LUMEN_TARGET:-${REPO_ROOT}/bin/lumend}"
 PLATFORM_OS="$(uname -s)"
 PLATFORM_ARCH="$(uname -m)"
@@ -102,6 +124,8 @@ fi
 echo "Lumen binary installation"
 echo
 echo "Release:  $RELEASE_TAG"
+echo "Network:  $NETWORK"
+echo "Source:   $RELEASE_SOURCE"
 echo "Platform: linux/$RELEASE_ARCH"
 echo "Archive:  $ARCHIVE_NAME"
 
