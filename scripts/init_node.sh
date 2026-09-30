@@ -190,6 +190,7 @@ JOIN_SCRIPT="${REPO_ROOT}/scripts/network/join.sh"
 STATE_SYNC_SCRIPT="${REPO_ROOT}/scripts/network/state_sync.sh"
 SERVICE_SCRIPT="${REPO_ROOT}/scripts/install/lumend_service.sh"
 COSMOVISOR_INSTALL_SCRIPT="${REPO_ROOT}/scripts/install/install_cosmovisor.sh"
+COSMOVISOR_VERSION_FILE="${REPO_ROOT}/scripts/install/cosmovisor.env"
 ADD_PEER_SCRIPT="${REPO_ROOT}/scripts/network/add_peer.sh"
 RELOAD_PEERS_SCRIPT="${REPO_ROOT}/scripts/network/reload_peers.sh"
 
@@ -246,6 +247,10 @@ fi
 
 if [[ "$SERVICE_MODE" == cosmovisor && ! -x "${COSMOVISOR_INSTALL_SCRIPT}" ]]; then
   echo "ERROR: Cosmovisor installer not found at ${COSMOVISOR_INSTALL_SCRIPT}" >&2
+  exit 1
+fi
+if [[ "$SERVICE_MODE" == cosmovisor && ! -r "${COSMOVISOR_VERSION_FILE}" ]]; then
+  echo "ERROR: Cosmovisor version metadata not found at ${COSMOVISOR_VERSION_FILE}" >&2
   exit 1
 fi
 
@@ -416,6 +421,13 @@ if ! command -v sudo >/dev/null 2>&1; then
 fi
 
 if [[ "$SERVICE_MODE" == cosmovisor ]]; then
+  # shellcheck source=/dev/null
+  source "${COSMOVISOR_VERSION_FILE}"
+  REQUIRED_COSMOVISOR_VERSION="${COSMOVISOR_VERSION:-}"
+  [[ -n "${REQUIRED_COSMOVISOR_VERSION}" ]] || {
+    echo "ERROR: Cosmovisor version metadata is empty at ${COSMOVISOR_VERSION_FILE}" >&2
+    exit 1
+  }
   COSMOVISOR_BIN_PATH="${COSMOVISOR_BIN:-}"
   if [[ -z "$COSMOVISOR_BIN_PATH" ]]; then
     COSMOVISOR_BIN_PATH="$(command -v cosmovisor 2>/dev/null || true)"
@@ -426,15 +438,23 @@ if [[ "$SERVICE_MODE" == cosmovisor ]]; then
       echo "ERROR: Cosmovisor binary is not executable at ${COSMOVISOR_BIN_PATH}." >&2
       exit 1
     fi
-    COSMOVISOR_VERSION_OUTPUT="$(${COSMOVISOR_BIN_PATH} version 2>&1 || true)"
+    COSMOVISOR_VERSION_OUTPUT="$("$COSMOVISOR_BIN_PATH" version --cosmovisor-only 2>&1 || true)"
     if [[ -z "$COSMOVISOR_VERSION_OUTPUT" ]]; then
       echo "ERROR: Cosmovisor version could not be verified at ${COSMOVISOR_BIN_PATH}." >&2
       exit 1
     fi
+    REQUIRED_VERSION_NO_V="${REQUIRED_COSMOVISOR_VERSION#v}"
+    REQUIRED_VERSION_PATTERN="(^|[^[:alnum:]])v?${REQUIRED_VERSION_NO_V//./\\.}([^[:alnum:]]|$)"
+    if [[ ! "$COSMOVISOR_VERSION_OUTPUT" =~ $REQUIRED_VERSION_PATTERN ]]; then
+      echo "ERROR: existing Cosmovisor version is incompatible." >&2
+      echo "       Existing: ${COSMOVISOR_VERSION_OUTPUT//$'\n'/ }" >&2
+      echo "       Required: ${REQUIRED_COSMOVISOR_VERSION}" >&2
+      exit 1
+    fi
     echo "→ Found existing Cosmovisor"
-    echo "→ Cosmovisor: ${COSMOVISOR_BIN_PATH}"
-    echo "→ Version: ${COSMOVISOR_VERSION_OUTPUT//$'\n'/ }"
-    echo "→ Reusing existing installation"
+    echo "  Path: ${COSMOVISOR_BIN_PATH}"
+    echo "  Version: ${COSMOVISOR_VERSION_OUTPUT//$'\n'/ }"
+    echo "→ Reusing existing Cosmovisor installation"
   else
     echo "→ Installing pinned Cosmovisor through the repository installer"
     if ! INSTALL_OUTPUT="$(sudo env "PATH=${PATH:-}" "${COSMOVISOR_INSTALL_SCRIPT}")"; then
@@ -449,7 +469,7 @@ if [[ "$SERVICE_MODE" == cosmovisor ]]; then
     echo "ERROR: Cosmovisor binary is not executable at ${COSMOVISOR_BIN_PATH}." >&2
     exit 1
   fi
-  COSMOVISOR_VERSION_OUTPUT="$("${COSMOVISOR_BIN_PATH}" version 2>&1 || true)"
+  COSMOVISOR_VERSION_OUTPUT="$("${COSMOVISOR_BIN_PATH}" version --cosmovisor-only 2>&1 || true)"
   if [[ -z "$COSMOVISOR_VERSION_OUTPUT" ]]; then
     echo "ERROR: Cosmovisor version could not be verified at ${COSMOVISOR_BIN_PATH}." >&2
     exit 1

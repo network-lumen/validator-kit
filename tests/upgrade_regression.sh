@@ -43,6 +43,13 @@ grep -q "User=nodeuser" <<< "$cosmo_unit"
 grep -q "Environment=HOME=" <<< "$cosmo_unit"
 grep -q "Environment=DAEMON_HOME=$FIXTURE/home" <<< "$cosmo_unit"
 grep -q "Environment=DAEMON_ALLOW_DOWNLOAD_BINARIES=false" <<< "$cosmo_unit"
+grep -q "Environment=DAEMON_RESTART_AFTER_UPGRADE=true" <<< "$cosmo_unit"
+grep -q "Restart=on-failure" <<< "$cosmo_unit"
+grep -q "LimitNOFILE=65535" <<< "$cosmo_unit"
+if grep -q "DAEMON_DATA_BACKUP_DIR\|UNSAFE_SKIP_BACKUP" <<< "$cosmo_unit"; then
+  echo "Cosmovisor unit unexpectedly changed backup policy" >&2
+  exit 1
+fi
 grep -q "ExecStart=$FIXTURE/cosmovisor run start --home $FIXTURE/home" <<< "$cosmo_unit"
 
 mkdir -p "$FIXTURE/archive"

@@ -34,7 +34,7 @@ if [[ ! -v COSMOVISOR_BIN ]]; then
   COSMOVISOR_BIN="$(command -v cosmovisor 2>/dev/null || true)"
 fi
 if [[ -x "$COSMOVISOR_BIN" ]]; then
-  COSMOVISOR_VERSION="$("$COSMOVISOR_BIN" version 2>&1 || true)"
+  COSMOVISOR_VERSION="$("$COSMOVISOR_BIN" version --cosmovisor-only 2>&1 || true)"
   echo "Cosmovisor     : $COSMOVISOR_BIN ${COSMOVISOR_VERSION//$'\n'/ }"
 else
   echo "Cosmovisor     : UNKNOWN (not found)"

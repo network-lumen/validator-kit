@@ -2,8 +2,10 @@
 set -euo pipefail
 umask 077
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Pinned to an upstream Cosmovisor release. Never replace this with @latest.
-COSMOVISOR_VERSION="v1.7.3"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/cosmovisor.env"
 TARGET="/usr/local/bin/cosmovisor"
 
 usage() {
@@ -35,15 +37,21 @@ if [[ -n "$EXISTING_PATH" ]]; then
     echo "ERROR: resolved Cosmovisor is not executable: $EXISTING_PATH" >&2
     exit 1
   }
-  EXISTING_VERSION="$($EXISTING_PATH version 2>&1 || true)"
+  EXISTING_VERSION="$($EXISTING_PATH version --cosmovisor-only 2>&1 || true)"
   [[ -n "$EXISTING_VERSION" ]] || {
     echo "ERROR: existing Cosmovisor could not execute: $EXISTING_PATH" >&2
     exit 1
   }
-  echo "→ Found existing Cosmovisor"
-  echo "→ Cosmovisor: $EXISTING_PATH"
-  echo "→ Version: ${EXISTING_VERSION//$'\n'/ }"
-  echo "→ Reusing existing installation"
+  VERSION_NO_V="${COSMOVISOR_VERSION#v}"
+  VERSION_PATTERN="(^|[^[:alnum:]])v?${VERSION_NO_V//./\.}([^[:alnum:]]|$)"
+  if [[ ! "$EXISTING_VERSION" =~ $VERSION_PATTERN ]]; then
+    echo "ERROR: existing Cosmovisor version does not match ${COSMOVISOR_VERSION}: $EXISTING_PATH" >&2
+    echo "       Reported: ${EXISTING_VERSION//$'\n'/ }" >&2
+    exit 1
+  fi
+  echo "→ Reusing existing Cosmovisor installation"
+  echo "  Path: $EXISTING_PATH"
+  echo "  Version: ${EXISTING_VERSION//$'\n'/ }"
   printf 'COSMOVISOR_PATH=%s\n' "$EXISTING_PATH"
   exit 0
 fi
@@ -62,7 +70,7 @@ TARGET_DIR="$(dirname "$TARGET")"
 mkdir -p "$TARGET_DIR"
 if [[ -e "$TARGET" ]]; then
   [[ -x "$TARGET" ]] || { echo "ERROR: existing Cosmovisor path is not executable: $TARGET" >&2; exit 1; }
-  EXISTING_VERSION="$($TARGET version 2>&1 || true)"
+  EXISTING_VERSION="$($TARGET version --cosmovisor-only 2>&1 || true)"
   VERSION_NO_V="${COSMOVISOR_VERSION#v}"
   VERSION_PATTERN="(^|[^[:alnum:]])v?${VERSION_NO_V//./\.}([^[:alnum:]]|$)"
   if [[ "$EXISTING_VERSION" =~ $VERSION_PATTERN ]]; then
@@ -85,7 +93,7 @@ GOTOOLCHAIN=local GOBIN="$BUILD_DIR/bin" \
 
 CANDIDATE="$BUILD_DIR/bin/cosmovisor"
 [[ -x "$CANDIDATE" ]] || { echo "ERROR: Go installation did not produce cosmovisor." >&2; exit 1; }
-VERSION_OUTPUT="$("$CANDIDATE" version 2>&1 || true)"
+VERSION_OUTPUT="$("$CANDIDATE" version --cosmovisor-only 2>&1 || true)"
 VERSION_NO_V="${COSMOVISOR_VERSION#v}"
 VERSION_PATTERN="(^|[^[:alnum:]])v?${VERSION_NO_V//./\.}([^[:alnum:]]|$)"
 if [[ ! "$VERSION_OUTPUT" =~ $VERSION_PATTERN ]]; then

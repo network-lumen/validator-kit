@@ -29,8 +29,15 @@ $LUMEN_HOME/cosmovisor/upgrades/<upgrade-name>/bin/lumend
 
 Fresh deployment installs the pinned Cosmovisor release through the repository
 installer, or accepts a verified `COSMOVISOR_BIN` path. The installer uses the
-upstream Go module at a pinned version and validates `cosmovisor version` before
-installation.
+upstream Go module at the toolkit-global pinned version and validates
+`cosmovisor version --cosmovisor-only` before installation, so probing does not
+execute `lumend` or require daemon configuration.
+
+The generated service sets `DAEMON_NAME`, `DAEMON_HOME`,
+`DAEMON_ALLOW_DOWNLOAD_BINARIES=false`, and
+`DAEMON_RESTART_AFTER_UPGRADE=true`. It intentionally leaves
+`DAEMON_DATA_BACKUP_DIR` unset, so Cosmovisor uses `DAEMON_HOME`, and leaves
+`UNSAFE_SKIP_BACKUP` unset, preserving its default of `false`.
 
 Prepare a binary before the governance upgrade height:
 

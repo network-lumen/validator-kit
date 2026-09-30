@@ -80,6 +80,8 @@ Environment=DAEMON_HOME=$home
 Environment=DAEMON_ALLOW_DOWNLOAD_BINARIES=false
 Environment=DAEMON_RESTART_AFTER_UPGRADE=true
 ExecStart=$cosmovisor run start --home $home
+Restart=on-failure
+LimitNOFILE=65535
 UNIT
 else
   cat > "${UNIT_OUTPUT:?}" <<UNIT
@@ -104,8 +106,10 @@ run_deploy() {
   [[ "$(cat "$home/validator-kit-role")" == "role=$role" ]]
   grep -q "Environment=DAEMON_NAME=lumend" "$unit"
   grep -q "Environment=DAEMON_HOME=$home" "$unit"
-  grep -q "Environment=DAEMON_ALLOW_DOWNLOAD_BINARIES=false" "$unit"
-  grep -q "ExecStart=$FIXTURE/cosmovisor run start --home $home" "$unit"
+grep -q "Environment=DAEMON_ALLOW_DOWNLOAD_BINARIES=false" "$unit"
+grep -q "ExecStart=$FIXTURE/cosmovisor run start --home $home" "$unit"
+grep -q "Restart=on-failure" "$unit"
+grep -q "LimitNOFILE=65535" "$unit"
 }
 
 : > "$FIXTURE/services.log"
@@ -130,7 +134,12 @@ existing_cosmovisor="$FIXTURE/existing-cosmovisor"
 rm -f "$FIXTURE/cosmovisor"
 cat > "$existing_cosmovisor" <<'EOF'
 #!/usr/bin/env bash
-if [[ "${1:-}" == version ]]; then printf '%s\n' 'cosmovisor v9.8.7'; fi
+if [[ "${1:-}" == version && "${2:-}" == --cosmovisor-only ]]; then
+  printf '%s\n' 'cosmovisor v1.7.3'
+else
+  printf '%s\n' 'DAEMON_NAME is not set' >&2
+  printf '%s\n' 'cosmovisor version: v1.7.3'
+fi
 EOF
 chmod 0755 "$existing_cosmovisor"
 ln -s "$existing_cosmovisor" "$FIXTURE/cosmovisor"
@@ -138,15 +147,37 @@ existing_before="$(sha256sum "$existing_cosmovisor")"
 existing_home="$FIXTURE/reused/.lumen"
 no_go_path="$FIXTURE/mock:$FIXTURE:/usr/bin:/bin"
 no_go_no_cosmo_path="$FIXTURE/mock:/usr/bin:/bin"
-SERVICE_LOG="$FIXTURE/services.log" UNIT_OUTPUT="$FIXTURE/reused.unit" \
+existing_output="$(SERVICE_LOG="$FIXTURE/services.log" UNIT_OUTPUT="$FIXTURE/reused.unit" \
   LUMEN_HOME="$existing_home" LUMEN_RELEASE_TAG=v1.4.3 \
   LUMEN_RELEASE_URL="file://$FIXTURE/linux-amd64-v1.4.3.tar.gz" \
   LUMEN_CHECKSUM_URL="file://$FIXTURE/SHA256SUMS" \
   HOME="$FIXTURE/reused" PATH="$no_go_path" \
-  "$FIXTURE/repo/scripts/lumen-node" deploy reused-node --non-interactive >/dev/null
+  "$FIXTURE/repo/scripts/lumen-node" deploy reused-node --non-interactive 2>&1)"
 grep -q "ExecStart=$existing_cosmovisor run start --home $existing_home" "$FIXTURE/reused.unit"
 [[ "$(sha256sum "$existing_cosmovisor")" == "$existing_before" ]]
+grep -q "Version: cosmovisor v1.7.3" <<< "$existing_output"
+if grep -q 'DAEMON_NAME is not set' <<< "$existing_output"; then
+  echo "Cosmovisor probe leaked daemon configuration errors" >&2
+  exit 1
+fi
 
+cat > "$existing_cosmovisor" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == version && "${2:-}" == --cosmovisor-only ]]; then
+  printf '%s\n' 'cosmovisor v9.8.7'
+fi
+EOF
+if SERVICE_LOG="$FIXTURE/services.log" UNIT_OUTPUT="$FIXTURE/mismatch.unit" \
+  LUMEN_HOME="$FIXTURE/mismatch/.lumen" LUMEN_RELEASE_TAG=v1.4.3 \
+  LUMEN_RELEASE_URL="file://$FIXTURE/linux-amd64-v1.4.3.tar.gz" \
+  LUMEN_CHECKSUM_URL="file://$FIXTURE/SHA256SUMS" HOME="$FIXTURE/mismatch" \
+  PATH="$no_go_path" "$FIXTURE/repo/scripts/lumen-node" deploy mismatch-node \
+  --non-interactive >/dev/null 2>&1; then
+  echo "incompatible Cosmovisor was accepted" >&2
+  exit 1
+fi
+
+rm -f "$FIXTURE/cosmovisor"
 if PATH="$no_go_path" command -v go >/dev/null 2>&1; then
   echo "test fixture unexpectedly exposed Go" >&2
   exit 1
