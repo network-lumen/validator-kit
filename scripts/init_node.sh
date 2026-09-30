@@ -275,7 +275,7 @@ fi
 
 echo "[1/5] Ensuring verified lumend binary is available"
 echo "       (this calls ./scripts/install/download_lumend.sh)"
-LUMEN_TARGET="${DEPLOY_BINARY_TARGET}" "${DOWNLOAD_SCRIPT}"
+LUMEN_NETWORK="${NETWORK}" LUMEN_TARGET="${DEPLOY_BINARY_TARGET}" "${DOWNLOAD_SCRIPT}"
 
 echo
 echo "[2/5] Joining the network as a node"

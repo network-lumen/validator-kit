@@ -21,8 +21,9 @@ installation. From the repository root, run:
 ./scripts/install/download_lumend.sh
 ```
 
-The default release is `v1.4.3`; set `LUMEN_RELEASE_TAG` to select another
-published release. `LUMEN_RELEASE_URL` is an exact archive URL override and
+The default release is read from `networks/mainnet/release.env`; set
+`LUMEN_RELEASE_TAG` explicitly to select another published release.
+`LUMEN_RELEASE_URL` is an exact archive URL override and
 must be paired with `LUMEN_CHECKSUM_URL`. Do not install an unverified binary
 on a validator host.
 

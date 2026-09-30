@@ -6,9 +6,9 @@ duplicating the blockchain source-build procedure.
 
 ## 1. Obtain and verify `lumend`
 
-Validator-kit currently defaults to release `v1.4.3`, matching
-[`scripts/install/download_lumend.sh`](../../scripts/install/download_lumend.sh).
-Operators may obtain that release through the verified installer, or build
+Validator-kit defines the current fresh-node release per network in
+`networks/<network>/release.env`. Inspect `LUMEND_VERSION` before selecting a
+binary. Operators may obtain that release through the verified installer, or build
 `lumend` using the instructions maintained by the
 [Lumen blockchain repository](https://github.com/network-lumen/blockchain).
 Do not use a binary from an unverified source.
@@ -16,13 +16,17 @@ Do not use a binary from an unverified source.
 Verify the supplied executable before continuing:
 
 ```bash
+export VALIDATOR_KIT_DIR="/path/to/validator-kit"
+export NETWORK="mainnet"
+source "$VALIDATOR_KIT_DIR/networks/$NETWORK/release.env"
+printf 'Required lumend: %s\n' "$LUMEND_VERSION"
 export LUMEND="/absolute/path/to/lumend"
 [[ -x "$LUMEND" ]]
 "$LUMEND" version
 ```
 
-The reported version must be compatible with `v1.4.3` and the selected network
-release. Keep the exact binary path for the service configuration.
+The reported version must match the normalized `LUMEND_VERSION` for the
+selected network. Keep the exact binary path for the service configuration.
 
 ## 2. Initialize the node home
 
@@ -32,8 +36,6 @@ location.
 
 ```bash
 export LUMEN_HOME="${LUMEN_HOME:-$HOME/.lumen}"
-export NETWORK="mainnet"
-export VALIDATOR_KIT_DIR="/path/to/validator-kit"
 export CHAIN_ID="lumen"
 "$LUMEND" init "${MONIKER:-lumen-validator}" --chain-id "$CHAIN_ID" --home "$LUMEN_HOME"
 cp "$VALIDATOR_KIT_DIR/networks/$NETWORK/genesis.json" "$LUMEN_HOME/config/genesis.json"
